@@ -1,4 +1,4 @@
-const CACHE_NAME = "agriculture-fidelite-v2026-07-03-2";
+const CACHE_NAME = "agriculture-fidelite-v2026-07-03-3";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./logo-agriculture.jpg"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
