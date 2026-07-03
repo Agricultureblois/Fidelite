@@ -1,0 +1,25 @@
+{
+  "name": "L'Agriculture Fidélité",
+  "short_name": "L'Agriculture",
+  "description": "Carte fidélité de la brasserie L'Agriculture à Blois.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090807",
+  "theme_color": "#090807",
+  "lang": "fr-FR",
+  "icons": [
+    {
+      "src": "logo-agriculture.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo-agriculture.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
