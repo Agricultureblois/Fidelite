@@ -1,7 +1,7 @@
 {
   "name": "L'Agriculture Fidélité",
   "short_name": "L'Agriculture",
-  "description": "Carte fidélité de la brasserie L'Agriculture à Blois.",
+  "description": "Carte fidélité connectée de la brasserie L'Agriculture à Blois.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
