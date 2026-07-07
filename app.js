@@ -212,7 +212,14 @@ async function startScanner() {
 function bindUi() {
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active'); $(tab.dataset.tab).classList.add('active'); }));
   $('signupForm').addEventListener('submit', signup);
-  $('installApp').addEventListener('click', () => {
+  $('installApp').addEventListener('click', async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      setupInstallHelp();
+      return;
+    }
     $('installPanel').hidden = false;
     setupInstallHelp();
   });
@@ -251,4 +258,5 @@ async function init() {
   try { await loadPublicData(); await refreshMember(); if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => {}); } catch (e) { toast(e.message || 'Erreur de connexion'); }
 }
 init();
+
 
