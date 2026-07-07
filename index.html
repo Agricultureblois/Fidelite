@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>L'Agriculture FidÃ©litÃ©</title>
+  <title>L'Agriculture Fidélité</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#090807">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,14 +25,14 @@
       </header>
 
       <section class="signin-panel" id="signinPanel">
-        <p class="panel-label">Carte fidÃ©litÃ© connectÃ©e</p>
+        <p class="panel-label">Carte fidélité connectée</p>
         <h2>Inscription client</h2>
         <form id="signupForm" class="signup-form">
-          <label for="firstNameInput">PrÃ©nom</label>
+          <label for="firstNameInput">Prénom</label>
           <input id="firstNameInput" autocomplete="given-name" placeholder="Camille" required>
-          <label for="phoneInput">TÃ©lÃ©phone</label>
+          <label for="phoneInput">Téléphone</label>
           <div class="input-row"><input id="phoneInput" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" required><button type="submit">Entrer</button></div>
-          <p class="hint">Votre prÃ©nom et votre tÃ©lÃ©phone servent uniquement Ã  votre fidÃ©litÃ© L'Agriculture.</p>
+          <p class="hint">Votre prénom et votre téléphone servent uniquement Ã  votre fidélité L'Agriculture.</p>
         </form>
       </section>
 
@@ -41,27 +41,27 @@
           <div class="card-head"><div><p class="eyebrow" id="welcomeName">Bienvenue</p><h2 id="currentRank">Stagiaire</h2></div><span class="points-pill"><strong id="pointsValue">0</strong> pts</span></div>
           <div class="progress-wrap"><div class="progress-meta"><span id="rankProgressLabel">0 / 100 points</span><span id="nextRankLabel">Apprenti</span></div><div class="progress-track"><span id="progressBar"></span></div></div>
         </article>
-        <nav class="tabs"><button class="tab active" data-tab="dashboard" type="button">Accueil</button><button class="tab" data-tab="rewards" type="button">RÃ©compenses</button><button class="tab" data-tab="menu" type="button">Menu</button><button class="tab" data-tab="qr" type="button">QR</button></nav>
-        <section class="tab-panel active" id="dashboard"><div class="section-title"><h3>DerniÃ¨res visites</h3><button class="mini-action" id="refreshClient" type="button">Actualiser</button></div><div class="history-list" id="historyList"></div></section>
+        <nav class="tabs"><button class="tab active" data-tab="dashboard" type="button">Accueil</button><button class="tab" data-tab="rewards" type="button">Récompenses</button><button class="tab" data-tab="menu" type="button">Menu</button><button class="tab" data-tab="qr" type="button">QR</button></nav>
+        <section class="tab-panel active" id="dashboard"><article class="install-card" id="installCard"><div><h3>Gardez votre carte sur le téléphone</h3><p id="installHelp">Ajoutez cette carte à votre écran d'accueil pour la retrouver comme une application.</p></div><button class="mini-action" id="installApp" type="button" hidden>Installer</button></article><div class="section-title"><h3>Dernières visites</h3><button class="mini-action" id="refreshClient" type="button">Actualiser</button></div><div class="history-list" id="historyList"></div></section>
         <section class="tab-panel" id="rewards"><div class="section-title"><h3>Avantages</h3><span>Selon vos points</span></div><div class="reward-list" id="rewardList"></div></section>
-        <section class="tab-panel" id="menu"><article class="menu-board"><p class="panel-label">Aujourd'hui</p><h3>Menu du jour</h3><dl><div><dt>EntrÃ©e</dt><dd id="menuStarter"></dd></div><div><dt>Plat</dt><dd id="menuMain"></dd></div><div><dt>Dessert</dt><dd id="menuDessert"></dd></div></dl><p class="menu-price" id="menuPrice"></p></article></section>
+        <section class="tab-panel" id="menu"><article class="menu-board"><p class="panel-label">Aujourd'hui</p><h3>Menu du jour</h3><dl><div><dt>Entrée</dt><dd id="menuStarter"></dd></div><div><dt>Plat</dt><dd id="menuMain"></dd></div><div><dt>Dessert</dt><dd id="menuDessert"></dd></div></dl><p class="menu-price" id="menuPrice"></p></article></section>
         <section class="tab-panel" id="qr"><article class="qr-card"><img id="qrImage" alt="QR code personnel"><p id="memberCode"></p><button class="secondary-action" id="copyCode" type="button">Copier le code</button><button class="ghost-button" id="switchClient" type="button">Changer de client</button></article></section>
       </section>
 
-      <section class="pin-panel" id="pinPanel" hidden><article class="pin-card"><p class="panel-label">AccÃ¨s rÃ©servÃ©</p><h2>Code administrateur</h2><input id="adminPinInput" type="password" inputmode="numeric" placeholder="Code PIN"><div class="input-row"><button class="ghost-button" id="cancelPin" type="button">Annuler</button><button id="unlockAdmin" type="button">Ouvrir</button></div></article></section>
-      <section class="scan-panel" id="scanPanel" hidden><article class="scan-card"><p class="panel-label">Scanner client</p><h2>QR code fidÃ©litÃ©</h2><video id="scanVideo" playsinline muted></video><p class="hint" id="scanStatus">Placez le QR code dans le cadre.</p><button class="ghost-button" id="closeScanner" type="button">Fermer</button></article></section>
+      <section class="pin-panel" id="pinPanel" hidden><article class="pin-card"><p class="panel-label">Accès réservé</p><h2>Code administrateur</h2><input id="adminPinInput" type="password" inputmode="numeric" placeholder="Code PIN"><div class="input-row"><button class="ghost-button" id="cancelPin" type="button">Annuler</button><button id="unlockAdmin" type="button">Ouvrir</button></div></article></section>
+      <section class="scan-panel" id="scanPanel" hidden><article class="scan-card"><p class="panel-label">Scanner client</p><h2>QR code fidélité</h2><video id="scanVideo" playsinline muted></video><p class="hint" id="scanStatus">Placez le QR code dans le cadre.</p><button class="ghost-button" id="closeScanner" type="button">Fermer</button></article></section>
 
       <section class="admin-panel" id="adminPanel" hidden>
-        <div class="admin-head"><div><p class="panel-label">Espace administrateur connectÃ©</p><h2>Gestion fidÃ©litÃ©</h2></div><div class="admin-actions"><button class="ghost-button" id="closeAdmin" type="button">Fermer</button><button class="danger-action" id="logoutAdmin" type="button">DÃ©connexion</button></div></div>
+        <div class="admin-head"><div><p class="panel-label">Espace administrateur connecté</p><h2>Gestion fidélité</h2></div><div class="admin-actions"><button class="ghost-button" id="closeAdmin" type="button">Fermer</button><button class="danger-action" id="logoutAdmin" type="button">Déconnexion</button></div></div>
         <div class="admin-grid">
-          <article class="admin-card"><h3>Scanner / crÃ©diter</h3><label>Code client</label><div class="input-row"><input id="scanCode" placeholder="AGRI-..."><button class="mini-action" id="openScanner" type="button">Scanner</button></div><label>PrÃ©nom client</label><input id="adminClientName" placeholder="PrÃ©nom"><label>Montant dÃ©pensÃ©</label><div class="input-row"><input id="amountSpent" type="number" min="1" step="1" placeholder="20"><button id="addPoints" type="button">Ajouter</button></div><p class="hint">Les points sont envoyÃ©s en base : le client les voit aprÃ¨s actualisation.</p></article>
-          <article class="admin-card"><h3>Menu du jour</h3><form id="menuForm" class="stack-form"><input id="adminStarter" placeholder="EntrÃ©e"><input id="adminMain" placeholder="Plat"><input id="adminDessert" placeholder="Dessert"><input id="adminPrice" placeholder="Prix"><button type="submit">Mettre Ã  jour</button></form></article>
+          <article class="admin-card"><h3>Scanner / créditer</h3><label>Code client</label><div class="input-row"><input id="scanCode" placeholder="AGRI-..."><button class="mini-action" id="openScanner" type="button">Scanner</button></div><label>Prénom client</label><input id="adminClientName" placeholder="Prénom"><label>Montant dépensé</label><div class="input-row"><input id="amountSpent" type="number" min="1" step="1" placeholder="20"><button id="addPoints" type="button">Ajouter</button></div><p class="hint">Les points sont envoyés en base : le client les voit après actualisation.</p></article>
+          <article class="admin-card"><h3>Menu du jour</h3><form id="menuForm" class="stack-form"><input id="adminStarter" placeholder="Entrée"><input id="adminMain" placeholder="Plat"><input id="adminDessert" placeholder="Dessert"><input id="adminPrice" placeholder="Prix"><button type="submit">Mettre Ã  jour</button></form></article>
           <article class="admin-card"><h3>Autres administrateurs</h3><form id="adminUserForm" class="stack-form"><input id="newAdminName" placeholder="Nom admin"><input id="newAdminPin" inputmode="numeric" placeholder="Nouveau PIN"><button type="submit">Ajouter admin</button></form><div class="client-list" id="adminUsersList"></div></article>
           <article class="admin-card"><h3>Grades et cadeaux</h3><div class="grade-editor" id="gradeEditor"></div><button class="mini-action" id="saveRanks" type="button">Enregistrer les grades</button></article>
           <article class="admin-card"><h3>Statistiques clients</h3><div class="stats"><span><strong id="statClients">0</strong> clients</span><span><strong id="statPoints">0</strong> points</span><span><strong id="statVisits">0</strong> visites</span></div><div class="client-list" id="clientList"></div></article>
         </div>
       </section>
-      <footer class="bottom-note">L'Agriculture Â· Blois Â· FidÃ©litÃ© connectÃ©e</footer>
+      <footer class="bottom-note">L'Agriculture Â· Blois Â· Fidélité connectée</footer>
     </section>
   </main>
   <div class="toast" id="toast" hidden></div>

@@ -3,27 +3,28 @@ const money = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR
 let db = null;
 let deferredInstallPrompt = null;
 function setupInstallHelp() {
-  const help = installHelp;
-  const btn = installApp;
+  const help = $('installHelp');
+  const btn = $('installApp');
   if (!help || !btn) return;
   const ua = navigator.userAgent || '';
   const isIos = /iphone|ipad|ipod/i.test(ua);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   if (isStandalone) {
-    help.textContent = 'Carte installee : ouvrez-la depuis votre ecran d accueil a chaque visite.';
+    help.textContent = "Carte installée : ouvrez-la depuis votre écran d'accueil à chaque visite.";
     btn.hidden = true;
     return;
   }
   if (isIos) {
-    help.textContent = 'Sur iPhone : ouvrez dans Safari, touchez Partager, puis Sur l ecran d accueil.';
+    help.textContent = "Sur iPhone : ouvrez dans Safari, touchez Partager, puis Sur l'écran d'accueil.";
+    btn.hidden = true;
   } else {
-    help.textContent = 'Sur Android : touchez Installer si le bouton apparait, sinon menu puis Ajouter a l ecran d accueil.';
+    help.textContent = "Sur Android : touchez Installer si le bouton apparaît, sinon menu puis Ajouter à l'écran d'accueil.";
   }
 }
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
-  const btn = installApp;
+  const btn = $('installApp');
   if (btn) btn.hidden = false;
 });
 let state = { member: null, ranks: [], menu: null, adminPin: localStorage.getItem('agriAdminPin') || '' };
@@ -209,6 +210,7 @@ async function startScanner() {
 function bindUi() {
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active'); $(tab.dataset.tab).classList.add('active'); }));
   $('signupForm').addEventListener('submit', signup);
+  $('installApp').addEventListener('click', async () => { if (!deferredInstallPrompt) { setupInstallHelp(); return; } deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; $('installApp').hidden = true; setupInstallHelp(); });
   $('refreshClient').addEventListener('click', refreshMember);
   $('adminToggle').addEventListener('click', () => state.adminPin ? openAdmin() : $('pinPanel').hidden = false);
   $('unlockAdmin').addEventListener('click', unlockAdmin);
