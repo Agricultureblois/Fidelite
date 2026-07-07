@@ -9,6 +9,7 @@ function setupInstallHelp() {
   const ua = navigator.userAgent || '';
   const isIos = /iphone|ipad|ipod/i.test(ua);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  btn.hidden = false;
   if (isStandalone) {
     help.textContent = "Carte installée : ouvrez-la depuis votre écran d'accueil à chaque visite.";
     btn.hidden = true;
@@ -16,16 +17,17 @@ function setupInstallHelp() {
   }
   if (isIos) {
     help.textContent = "Sur iPhone : ouvrez dans Safari, touchez Partager, puis Sur l'écran d'accueil.";
-    btn.hidden = true;
+    btn.textContent = "Voir l'aide";
   } else {
-    help.textContent = "Sur Android : touchez Installer si le bouton apparaît, sinon menu puis Ajouter à l'écran d'accueil.";
+    help.textContent = "Sur Android : touchez Ajouter à l'accueil. Si besoin, utilisez le menu du navigateur puis Ajouter à l'écran d'accueil.";
+    btn.textContent = deferredInstallPrompt ? 'Installer' : "Voir l'aide";
   }
 }
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
   const btn = $('installApp');
-  if (btn) btn.hidden = false;
+  if (btn) { btn.hidden = false; btn.textContent = 'Installer'; }
 });
 let state = { member: null, ranks: [], menu: null, adminPin: localStorage.getItem('agriAdminPin') || '' };
 
@@ -210,7 +212,17 @@ async function startScanner() {
 function bindUi() {
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active'); $(tab.dataset.tab).classList.add('active'); }));
   $('signupForm').addEventListener('submit', signup);
-  $('installApp').addEventListener('click', async () => { if (!deferredInstallPrompt) { setupInstallHelp(); return; } deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; $('installApp').hidden = true; setupInstallHelp(); });
+  $('installApp').addEventListener('click', async () => {
+    if (!deferredInstallPrompt) {
+      setupInstallHelp();
+      toast("Utilisez le bouton Partager ou le menu du navigateur, puis ajoutez à l'écran d'accueil.");
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    setupInstallHelp();
+  });
   $('refreshClient').addEventListener('click', refreshMember);
   $('adminToggle').addEventListener('click', () => state.adminPin ? openAdmin() : $('pinPanel').hidden = false);
   $('unlockAdmin').addEventListener('click', unlockAdmin);
