@@ -35,6 +35,8 @@ function toast(text) { $('toast').textContent = text; $('toast').hidden = false;
 function normalizePhone(v) { return String(v || '').replace(/[^\d+]/g, '').replace(/^0033/, '+33'); }
 function memberCode(phone) { return 'AGRI-' + String(phone || '').replace(/[^\d]/g, ''); }
 function qrUrl(data) { return 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(data); }
+function fullName(member) { return [member?.first_name, member?.last_name].filter(Boolean).join(' ').trim(); }
+function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function ensureConfig() {
   if (!window.AGRI_SUPABASE_URL || window.AGRI_SUPABASE_URL.includes('REMPLACE_MOI')) {
     toast('Configuration Supabase manquante');
@@ -86,7 +88,7 @@ function renderClient(member) {
   $('nextRankLabel').textContent = target === base ? rank.name : next.name;
   $('progressBar').style.width = ratio + '%';
   $('memberCode').textContent = member.code;
-  $('qrImage').src = qrUrl(JSON.stringify({ code: member.code, firstName: member.first_name || '', phone: member.phone || '' }));
+  $('qrImage').src = qrUrl(JSON.stringify({ code: member.code, firstName: member.first_name || '', lastName: member.last_name || '', phone: member.phone || '' }));
   renderHistory(member.visits || []);
   renderRewards(points);
   $('signinPanel').hidden = true;
@@ -118,10 +120,15 @@ async function refreshMember() {
 async function signup(e) {
   e.preventDefault();
   const firstName = $('firstNameInput').value.trim();
+  const lastName = $('lastNameInput').value.trim();
   const phone = normalizePhone($('phoneInput').value);
   if (!firstName || phone.length < 8) return toast('Prénom et téléphone requis');
   const code = memberCode(phone);
-  const res = await db.from('members').upsert({ first_name: firstName, phone, code }, { onConflict: 'phone' }).select('*').single();
+  let res = await db.from('members').upsert({ first_name: firstName, last_name: lastName, phone, code }, { onConflict: 'phone' }).select('*').single();
+  if (res.error && /last_name|schema cache/i.test(res.error.message || '')) {
+    res = await db.from('members').upsert({ first_name: firstName, phone, code }, { onConflict: 'phone' }).select('*').single();
+    if (!res.error) toast('Nom non enregistré : mise à jour Supabase à lancer');
+  }
   if (res.error) return toast(res.error.message);
   const member = await getMemberWithVisits(res.data.code);
   renderClient(member);
@@ -147,7 +154,12 @@ async function loadAdmin() {
   $('statPoints').textContent = membersRes.data.reduce((s, m) => s + Number(m.points || 0), 0);
   $('statVisits').textContent = visitsRes.data ? visitsRes.data.length : 0;
   const list = $('clientList'); list.innerHTML = '';
-  membersRes.data.forEach(m => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + (m.first_name || 'Client') + '</strong><span>' + m.points + ' pts · ' + rankFor(m.points).name + '</span><small>' + m.code + ' · ' + m.phone + '</small>'; list.appendChild(item); });
+  membersRes.data.forEach(m => {
+    const item = document.createElement('article');
+    item.className = 'client-item client-item-admin';
+    item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small></div><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button>';
+    list.appendChild(item);
+  });
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
   (adminsRes.data || []).forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + a.name + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
   renderRankEditor();
@@ -169,7 +181,7 @@ async function addPoints() {
   if (updateRes.error) return toast(updateRes.error.message);
   $('amountSpent').value = '';
   const updated = await getMemberWithVisits(code);
-  toast('Points ajoutés à ' + (updated.first_name || updated.code));
+  toast('Points ajoutés à ' + (fullName(updated) || updated.code));
   if (state.member && state.member.code === updated.code) renderClient(updated);
   await loadAdmin();
 }
@@ -177,7 +189,21 @@ async function lookupScanCode() {
   const code = $('scanCode').value.trim().toUpperCase();
   if (code.length < 8) return;
   const m = await getMemberWithVisits(code);
-  if (m) $('adminClientName').value = m.first_name || '';
+  if (m) $('adminClientName').value = fullName(m) || m.code;
+}
+async function deleteClient(memberId, memberName) {
+  if (!memberId) return;
+  if (!confirm('Supprimer ' + memberName + ' ? Ses points et visites seront supprimés.')) return;
+  const visitsRes = await db.from('visits').delete().eq('member_id', memberId);
+  if (visitsRes.error) return toast(visitsRes.error.message);
+  const memberRes = await db.from('members').delete().eq('id', memberId);
+  if (memberRes.error) return toast(memberRes.error.message);
+  if (state.member && state.member.id === memberId) {
+    localStorage.removeItem('agriMemberCode');
+    state.member = null;
+  }
+  toast('Client supprimé');
+  await loadAdmin();
 }
 async function updateMenu(e) {
   e.preventDefault();
@@ -207,32 +233,19 @@ async function startScanner() {
   if (!navigator.mediaDevices?.getUserMedia) return toast('Caméra non disponible');
   if (!('BarcodeDetector' in window)) return toast('Scanner non supporté, saisissez le code');
   $('scanPanel').hidden = false; $('scanStatus').textContent = 'Ouverture caméra...';
-  try { scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); $('scanVideo').srcObject = scanStream; await $('scanVideo').play(); const detector = new BarcodeDetector({ formats: ['qr_code'] }); $('scanStatus').textContent = 'Placez le QR code dans le cadre.'; scanTimer = setInterval(async () => { const codes = await detector.detect($('scanVideo')); if (!codes.length) return; let value = codes[0].rawValue || ''; try { const payload = JSON.parse(value); if (payload.code) { $('scanCode').value = payload.code; $('adminClientName').value = payload.firstName || ''; } } catch { const match = value.match(/AGRI-[0-9]+/); $('scanCode').value = match ? match[0] : value; await lookupScanCode(); } await stopScanner(); toast('QR scanné'); }, 700); } catch { await stopScanner(); toast('Autorisez la caméra'); }
+  try { scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); $('scanVideo').srcObject = scanStream; await $('scanVideo').play(); const detector = new BarcodeDetector({ formats: ['qr_code'] }); $('scanStatus').textContent = 'Placez le QR code dans le cadre.'; scanTimer = setInterval(async () => { const codes = await detector.detect($('scanVideo')); if (!codes.length) return; let value = codes[0].rawValue || ''; try { const payload = JSON.parse(value); if (payload.code) { $('scanCode').value = payload.code; $('adminClientName').value = [payload.firstName, payload.lastName].filter(Boolean).join(' ') || ''; await lookupScanCode(); } } catch { const match = value.match(/AGRI-[0-9]+/); $('scanCode').value = match ? match[0] : value; await lookupScanCode(); } await stopScanner(); toast('QR scanné'); }, 700); } catch { await stopScanner(); toast('Autorisez la caméra'); }
 }
 function bindUi() {
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active'); $(tab.dataset.tab).classList.add('active'); }));
   $('signupForm').addEventListener('submit', signup);
-  $('installApp').addEventListener('click', async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-      deferredInstallPrompt = null;
-      setupInstallHelp();
-      return;
-    }
+  $('installApp').addEventListener('click', () => {
     $('installPanel').hidden = false;
     setupInstallHelp();
   });
-  $('tryInstallApp').addEventListener('click', async () => {
-    if (!deferredInstallPrompt) {
-      setupInstallHelp();
-      toast("Sur iPhone utilisez Partager, sur Android utilisez le menu du navigateur.");
-      return;
-    }
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
+  $('tryInstallApp').addEventListener('click', () => {
+    $('installPanel').hidden = false;
     setupInstallHelp();
+    toast("Utilisez le menu Chrome puis Ajouter à l'écran d'accueil.");
   });
   $('closeInstallHelp').addEventListener('click', () => $('installPanel').hidden = true);
   $('refreshClient').addEventListener('click', refreshMember);
@@ -245,6 +258,10 @@ function bindUi() {
   $('scanCode').addEventListener('input', lookupScanCode);
   $('menuForm').addEventListener('submit', updateMenu);
   $('adminUserForm').addEventListener('submit', addAdmin);
+  $('clientList').addEventListener('click', (event) => {
+    const button = event.target.closest('.delete-client');
+    if (button) deleteClient(button.dataset.clientId, button.dataset.clientName || 'ce client');
+  });
   $('saveRanks').addEventListener('click', saveRanks);
   $('openScanner').addEventListener('click', startScanner);
   $('closeScanner').addEventListener('click', stopScanner);
