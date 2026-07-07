@@ -16,10 +16,10 @@ function setupInstallHelp() {
     return;
   }
   if (isIos) {
-    help.textContent = "Sur iPhone : ouvrez dans Safari, touchez Partager, puis Sur l'écran d'accueil.";
+    help.textContent = "Touchez le bouton pour voir les étapes d'installation sur iPhone ou Android.";
     btn.textContent = "Voir l'aide";
   } else {
-    help.textContent = "Sur Android : touchez Ajouter à l'accueil. Si besoin, utilisez le menu du navigateur puis Ajouter à l'écran d'accueil.";
+    help.textContent = "Touchez le bouton pour voir les étapes d'installation sur iPhone ou Android.";
     btn.textContent = deferredInstallPrompt ? 'Installer' : "Voir l'aide";
   }
 }
@@ -212,10 +212,14 @@ async function startScanner() {
 function bindUi() {
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active'); $(tab.dataset.tab).classList.add('active'); }));
   $('signupForm').addEventListener('submit', signup);
-  $('installApp').addEventListener('click', async () => {
+  $('installApp').addEventListener('click', () => {
+    $('installPanel').hidden = false;
+    setupInstallHelp();
+  });
+  $('tryInstallApp').addEventListener('click', async () => {
     if (!deferredInstallPrompt) {
       setupInstallHelp();
-      toast("Utilisez le bouton Partager ou le menu du navigateur, puis ajoutez à l'écran d'accueil.");
+      toast("Sur iPhone utilisez Partager, sur Android utilisez le menu du navigateur.");
       return;
     }
     deferredInstallPrompt.prompt();
@@ -223,6 +227,7 @@ function bindUi() {
     deferredInstallPrompt = null;
     setupInstallHelp();
   });
+  $('closeInstallHelp').addEventListener('click', () => $('installPanel').hidden = true);
   $('refreshClient').addEventListener('click', refreshMember);
   $('adminToggle').addEventListener('click', () => state.adminPin ? openAdmin() : $('pinPanel').hidden = false);
   $('unlockAdmin').addEventListener('click', unlockAdmin);
