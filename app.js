@@ -1,6 +1,31 @@
 ﻿const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 let db = null;
+let deferredInstallPrompt = null;
+function setupInstallHelp() {
+  const help = installHelp;
+  const btn = installApp;
+  if (!help || !btn) return;
+  const ua = navigator.userAgent || '';
+  const isIos = /iphone|ipad|ipod/i.test(ua);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone) {
+    help.textContent = 'Carte installee : ouvrez-la depuis votre ecran d accueil a chaque visite.';
+    btn.hidden = true;
+    return;
+  }
+  if (isIos) {
+    help.textContent = 'Sur iPhone : ouvrez dans Safari, touchez Partager, puis Sur l ecran d accueil.';
+  } else {
+    help.textContent = 'Sur Android : touchez Installer si le bouton apparait, sinon menu puis Ajouter a l ecran d accueil.';
+  }
+}
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  const btn = installApp;
+  if (btn) btn.hidden = false;
+});
 let state = { member: null, ranks: [], menu: null, adminPin: localStorage.getItem('agriAdminPin') || '' };
 
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; setTimeout(() => $('toast').hidden = true, 2200); }
@@ -207,3 +232,4 @@ async function init() {
   try { await loadPublicData(); await refreshMember(); if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => {}); } catch (e) { toast(e.message || 'Erreur de connexion'); }
 }
 init();
+
