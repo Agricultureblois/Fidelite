@@ -94,6 +94,7 @@ function renderClient(member) {
   $('signinPanel').hidden = true;
   $('clientApp').hidden = false;
   localStorage.setItem('agriMemberCode', member.code);
+  if (member.phone) localStorage.setItem('agriMemberPhone', member.phone);
 }
 function renderHistory(visits) {
   const list = $('historyList'); list.innerHTML = '';
@@ -110,10 +111,15 @@ async function getMemberWithVisits(code) {
   return data;
 }
 async function refreshMember() {
-  const code = localStorage.getItem('agriMemberCode');
+  let code = localStorage.getItem('agriMemberCode');
+  if (!code && localStorage.getItem('agriMemberPhone')) code = memberCode(localStorage.getItem('agriMemberPhone'));
   if (!code) return;
-  const member = await getMemberWithVisits(code);
-  if (member) renderClient(member);
+  try {
+    const member = await getMemberWithVisits(code);
+    if (member) renderClient(member);
+  } catch (error) {
+    toast(error.message || 'Connexion client à actualiser');
+  }
 }
 async function signup(e) {
   e.preventDefault();
@@ -125,19 +131,32 @@ async function signup(e) {
   const { data, error } = await db.rpc('signup_member', { p_first_name: firstName, p_last_name: lastName, p_phone: phone, p_code: code });
   if (error) return toast(error.message);
   const member = data || await getMemberWithVisits(code);
+  localStorage.setItem('agriMemberPhone', phone);
   renderClient(member);
 }
 async function unlockAdmin() {
   state.adminPin = $('adminPinInput').value.trim();
-  if (!(await checkAdmin())) { state.adminPin = ''; return toast('Code admin incorrect'); }
+  try {
+    if (!(await checkAdmin())) { state.adminPin = ''; return toast('Code admin incorrect'); }
+  } catch (error) {
+    state.adminPin = '';
+    return toast(error.message || 'Connexion admin impossible');
+  }
   localStorage.setItem('agriAdminPin', state.adminPin);
   $('pinPanel').hidden = true;
   await openAdmin();
 }
 async function openAdmin() {
-  if (!(await checkAdmin())) { localStorage.removeItem('agriAdminPin'); state.adminPin = ''; $('pinPanel').hidden = false; return; }
-  $('adminPanel').hidden = false;
-  await loadAdmin();
+  try {
+    if (!(await checkAdmin())) { localStorage.removeItem('agriAdminPin'); state.adminPin = ''; $('pinPanel').hidden = false; return; }
+    $('adminPanel').hidden = false;
+    await loadAdmin();
+  } catch (error) {
+    localStorage.removeItem('agriAdminPin');
+    state.adminPin = '';
+    $('pinPanel').hidden = false;
+    toast(error.message || 'Accès admin impossible');
+  }
 }
 async function loadAdmin() {
   const { data, error } = await db.rpc('admin_dashboard', { p_pin: state.adminPin });
@@ -187,6 +206,7 @@ async function deleteClient(memberId, memberName) {
   if (error) return toast(error.message);
   if (state.member && state.member.id === memberId) {
     localStorage.removeItem('agriMemberCode');
+    localStorage.removeItem('agriMemberPhone');
     state.member = null;
   }
   toast('Client supprimé');
@@ -265,7 +285,7 @@ function bindUi() {
   $('openScanner').addEventListener('click', startScanner);
   $('closeScanner').addEventListener('click', stopScanner);
   $('copyCode').addEventListener('click', () => navigator.clipboard?.writeText($('memberCode').textContent));
-  $('switchClient').addEventListener('click', () => { localStorage.removeItem('agriMemberCode'); state.member = null; $('clientApp').hidden = true; $('signinPanel').hidden = false; });
+  $('switchClient').addEventListener('click', () => { localStorage.removeItem('agriMemberCode'); localStorage.removeItem('agriMemberPhone'); state.member = null; $('clientApp').hidden = true; $('signinPanel').hidden = false; });
   window.addEventListener('focus', refreshMember);
 }
 async function init() {
