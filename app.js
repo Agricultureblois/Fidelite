@@ -47,9 +47,9 @@ function ensureConfig() {
 }
 async function checkAdmin() {
   if (!state.adminPin) return false;
-  const { data, error } = await db.from('admin_users').select('id').eq('pin', state.adminPin).eq('active', true).limit(1);
+  const { data, error } = await db.rpc('admin_ok', { p_pin: state.adminPin });
   if (error) throw error;
-  return data && data.length > 0;
+  return data === true;
 }
 async function loadPublicData() {
   const ranksRes = await db.from('ranks').select('name,points_required,reward,sort_order').order('sort_order');
@@ -105,11 +105,9 @@ function renderRewards(points) {
   state.ranks.forEach(rank => { const unlocked = points >= Number(rank.points_required); const item = document.createElement('article'); item.className = 'reward-item' + (unlocked ? '' : ' locked'); item.innerHTML = '<strong>' + rank.name + '<small> · ' + rank.points_required + ' pts</small></strong><span>' + (unlocked ? 'Débloqué' : 'À venir') + '</span><p>' + rank.reward + '</p>'; list.appendChild(item); });
 }
 async function getMemberWithVisits(code) {
-  const memberRes = await db.from('members').select('*').eq('code', code).single();
-  if (memberRes.error) return null;
-  const visitsRes = await db.from('visits').select('*').eq('member_id', memberRes.data.id).order('created_at');
-  if (visitsRes.error) throw visitsRes.error;
-  return { ...memberRes.data, visits: visitsRes.data || [] };
+  const { data, error } = await db.rpc('get_member_card', { p_code: code });
+  if (error) throw error;
+  return data;
 }
 async function refreshMember() {
   const code = localStorage.getItem('agriMemberCode');
@@ -124,13 +122,9 @@ async function signup(e) {
   const phone = normalizePhone($('phoneInput').value);
   if (!firstName || phone.length < 8) return toast('Prénom et téléphone requis');
   const code = memberCode(phone);
-  let res = await db.from('members').upsert({ first_name: firstName, last_name: lastName, phone, code }, { onConflict: 'phone' }).select('*').single();
-  if (res.error && /last_name|schema cache/i.test(res.error.message || '')) {
-    res = await db.from('members').upsert({ first_name: firstName, phone, code }, { onConflict: 'phone' }).select('*').single();
-    if (!res.error) toast('Nom non enregistré : mise à jour Supabase à lancer');
-  }
-  if (res.error) return toast(res.error.message);
-  const member = await getMemberWithVisits(res.data.code);
+  const { data, error } = await db.rpc('signup_member', { p_first_name: firstName, p_last_name: lastName, p_phone: phone, p_code: code });
+  if (error) return toast(error.message);
+  const member = data || await getMemberWithVisits(code);
   renderClient(member);
 }
 async function unlockAdmin() {
@@ -146,22 +140,22 @@ async function openAdmin() {
   await loadAdmin();
 }
 async function loadAdmin() {
-  const membersRes = await db.from('members').select('*').order('points', { ascending: false });
-  const visitsRes = await db.from('visits').select('id');
-  const adminsRes = await db.from('admin_users').select('name').eq('active', true);
-  if (membersRes.error) throw membersRes.error;
-  $('statClients').textContent = membersRes.data.length;
-  $('statPoints').textContent = membersRes.data.reduce((s, m) => s + Number(m.points || 0), 0);
-  $('statVisits').textContent = visitsRes.data ? visitsRes.data.length : 0;
+  const { data, error } = await db.rpc('admin_dashboard', { p_pin: state.adminPin });
+  if (error) throw error;
+  const members = data?.members || [];
+  const admins = data?.admins || [];
+  $('statClients').textContent = members.length;
+  $('statPoints').textContent = members.reduce((s, m) => s + Number(m.points || 0), 0);
+  $('statVisits').textContent = data?.visits_count || 0;
   const list = $('clientList'); list.innerHTML = '';
-  membersRes.data.forEach(m => {
+  members.forEach(m => {
     const item = document.createElement('article');
     item.className = 'client-item client-item-admin';
-    item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small></div><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button>';
+    item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small></div><div class="client-actions"><button class="mini-action correct-client" type="button" data-client-code="' + escapeHtml(m.code) + '" data-client-points="' + Number(m.points || 0) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Corriger</button><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button></div>';
     list.appendChild(item);
   });
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
-  (adminsRes.data || []).forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + a.name + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
+  admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
   renderRankEditor();
 }
 function renderRankEditor() {
@@ -172,15 +166,10 @@ async function addPoints() {
   const code = $('scanCode').value.trim().toUpperCase();
   const amount = Math.round(Number($('amountSpent').value || 0));
   if (!code || !amount) return toast('Code et montant requis');
-  const member = await getMemberWithVisits(code);
-  if (!member) return toast('Client introuvable');
   const pts = Math.max(0, amount);
-  const visitRes = await db.from('visits').insert({ member_id: member.id, amount: pts, points: pts });
-  if (visitRes.error) return toast(visitRes.error.message);
-  const updateRes = await db.from('members').update({ points: Number(member.points || 0) + pts, updated_at: new Date().toISOString() }).eq('id', member.id).select('*').single();
-  if (updateRes.error) return toast(updateRes.error.message);
+  const { data: updated, error } = await db.rpc('admin_add_points', { p_pin: state.adminPin, p_code: code, p_amount: pts });
+  if (error) return toast(error.message);
   $('amountSpent').value = '';
-  const updated = await getMemberWithVisits(code);
   toast('Points ajoutés à ' + (fullName(updated) || updated.code));
   if (state.member && state.member.code === updated.code) renderClient(updated);
   await loadAdmin();
@@ -194,10 +183,8 @@ async function lookupScanCode() {
 async function deleteClient(memberId, memberName) {
   if (!memberId) return;
   if (!confirm('Supprimer ' + memberName + ' ? Ses points et visites seront supprimés.')) return;
-  const visitsRes = await db.from('visits').delete().eq('member_id', memberId);
-  if (visitsRes.error) return toast(visitsRes.error.message);
-  const memberRes = await db.from('members').delete().eq('id', memberId);
-  if (memberRes.error) return toast(memberRes.error.message);
+  const { error } = await db.rpc('admin_delete_member', { p_pin: state.adminPin, p_member_id: memberId });
+  if (error) return toast(error.message);
   if (state.member && state.member.id === memberId) {
     localStorage.removeItem('agriMemberCode');
     state.member = null;
@@ -205,26 +192,36 @@ async function deleteClient(memberId, memberName) {
   toast('Client supprimé');
   await loadAdmin();
 }
+async function correctClientPoints(code, currentPoints, memberName) {
+  const value = prompt('Nouveau total de points pour ' + memberName, String(currentPoints || 0));
+  if (value === null) return;
+  const points = Math.max(0, Math.round(Number(value)));
+  if (!Number.isFinite(points)) return toast('Nombre de points invalide');
+  const { data: updated, error } = await db.rpc('admin_set_points', { p_pin: state.adminPin, p_code: code, p_points: points });
+  if (error) return toast(error.message);
+  if (state.member && state.member.code === updated.code) renderClient(updated);
+  toast('Points corrigés');
+  await loadAdmin();
+}
 async function updateMenu(e) {
   e.preventDefault();
-  const res = await db.from('daily_menu').update({ starter: $('adminStarter').value, main: $('adminMain').value, dessert: $('adminDessert').value, price: $('adminPrice').value, updated_at: new Date().toISOString() }).eq('id', 1).select('*').single();
-  if (res.error) return toast(res.error.message);
-  state.menu = res.data; renderMenu(); toast('Menu mis à jour');
+  const { data, error } = await db.rpc('admin_update_menu', { p_pin: state.adminPin, p_starter: $('adminStarter').value, p_main: $('adminMain').value, p_dessert: $('adminDessert').value, p_price: $('adminPrice').value });
+  if (error) return toast(error.message);
+  state.menu = data; renderMenu(); toast('Menu mis à jour');
 }
 async function addAdmin(e) {
   e.preventDefault();
   const name = $('newAdminName').value.trim() || 'Admin';
   const pin = $('newAdminPin').value.trim();
   if (pin.length < 4) return toast('PIN trop court');
-  const res = await db.from('admin_users').insert({ name, pin, active: true });
-  if (res.error) return toast(res.error.message);
+  const { error } = await db.rpc('admin_add_user', { p_pin: state.adminPin, p_name: name, p_new_pin: pin });
+  if (error) return toast(error.message);
   $('newAdminName').value = ''; $('newAdminPin').value = ''; toast('Admin ajouté'); await loadAdmin();
 }
 async function saveRanks() {
   const rows = Array.from(document.querySelectorAll('[data-rank-name]')).map((input, idx) => { const i = input.dataset.rankName; return { name: input.value, points_required: Number(document.querySelector('[data-rank-points="' + i + '"]').value || 0), reward: document.querySelector('[data-rank-reward="' + i + '"]').value, sort_order: idx + 1 }; });
-  await db.from('ranks').delete().gte('id', 0);
-  const res = await db.from('ranks').insert(rows);
-  if (res.error) return toast(res.error.message);
+  const { error } = await db.rpc('admin_save_ranks', { p_pin: state.adminPin, p_ranks: rows });
+  if (error) return toast(error.message);
   await loadPublicData(); await loadAdmin(); toast('Grades enregistrés');
 }
 let scanStream = null, scanTimer = null;
@@ -261,6 +258,8 @@ function bindUi() {
   $('clientList').addEventListener('click', (event) => {
     const button = event.target.closest('.delete-client');
     if (button) deleteClient(button.dataset.clientId, button.dataset.clientName || 'ce client');
+    const correctButton = event.target.closest('.correct-client');
+    if (correctButton) correctClientPoints(correctButton.dataset.clientCode, correctButton.dataset.clientPoints, correctButton.dataset.clientName || 'ce client');
   });
   $('saveRanks').addEventListener('click', saveRanks);
   $('openScanner').addEventListener('click', startScanner);
