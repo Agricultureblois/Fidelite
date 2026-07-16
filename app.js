@@ -29,10 +29,11 @@ window.addEventListener('beforeinstallprompt', (event) => {
   const btn = $('installApp');
   if (btn) { btn.hidden = false; btn.textContent = 'Installer'; }
 });
-let state = { member: null, ranks: [], menu: null, adminPin: localStorage.getItem('agriAdminPin') || '' };
+let state = { member: null, ranks: [], menu: null, adminPin: '' };
 
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; setTimeout(() => $('toast').hidden = true, 2200); }
 function normalizePhone(v) { return String(v || '').replace(/[^\d+]/g, '').replace(/^0033/, '+33'); }
+function normalizePin(v) { return String(v || '').replace(/[^\d]/g, ''); }
 function memberCode(phone) { return 'AGRI-' + String(phone || '').replace(/[^\d]/g, ''); }
 function qrUrl(data) { return 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(data); }
 function fullName(member) { return [member?.first_name, member?.last_name].filter(Boolean).join(' ').trim(); }
@@ -46,8 +47,9 @@ function ensureConfig() {
   return true;
 }
 async function checkAdmin() {
-  if (!state.adminPin) return false;
-  const { data, error } = await db.rpc('admin_ok', { p_pin: state.adminPin });
+  const pin = normalizePin(state.adminPin);
+  if (!pin) return false;
+  const { data, error } = await db.rpc('admin_ok', { p_pin: pin });
   if (error) throw error;
   return data === true;
 }
@@ -135,14 +137,15 @@ async function signup(e) {
   renderClient(member);
 }
 async function unlockAdmin() {
-  state.adminPin = $('adminPinInput').value.trim();
+  state.adminPin = normalizePin($('adminPinInput').value);
+  $('adminPinInput').value = state.adminPin;
   try {
     if (!(await checkAdmin())) { state.adminPin = ''; return toast('Code admin incorrect'); }
   } catch (error) {
     state.adminPin = '';
     return toast(error.message || 'Connexion admin impossible');
   }
-  localStorage.setItem('agriAdminPin', state.adminPin);
+  localStorage.removeItem('agriAdminPin');
   $('pinPanel').hidden = true;
   await openAdmin();
 }
@@ -266,7 +269,12 @@ function bindUi() {
   });
   $('closeInstallHelp').addEventListener('click', () => $('installPanel').hidden = true);
   $('refreshClient').addEventListener('click', refreshMember);
-  $('adminToggle').addEventListener('click', () => state.adminPin ? openAdmin() : $('pinPanel').hidden = false);
+  $('adminToggle').addEventListener('click', () => {
+    localStorage.removeItem('agriAdminPin');
+    state.adminPin = '';
+    $('adminPinInput').value = '';
+    $('pinPanel').hidden = false;
+  });
   $('unlockAdmin').addEventListener('click', unlockAdmin);
   $('cancelPin').addEventListener('click', () => $('pinPanel').hidden = true);
   $('closeAdmin').addEventListener('click', () => $('adminPanel').hidden = true);
@@ -291,7 +299,17 @@ function bindUi() {
 async function init() {
   bindUi();
   if (!ensureConfig()) return;
-  try { await loadPublicData(); await refreshMember(); if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => {}); } catch (e) { toast(e.message || 'Erreur de connexion'); }
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(registration => registration.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+    }
+  } catch {}
+  try { await loadPublicData(); await refreshMember(); } catch (e) { toast(e.message || 'Erreur de connexion'); }
 }
 init();
 
