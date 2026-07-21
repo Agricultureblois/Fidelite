@@ -105,7 +105,15 @@ function renderHistory(visits) {
 }
 function renderRewards(points) {
   const list = $('rewardList'); list.innerHTML = '';
-  state.ranks.forEach(rank => { const unlocked = points >= Number(rank.points_required); const item = document.createElement('article'); item.className = 'reward-item' + (unlocked ? '' : ' locked'); item.innerHTML = '<strong>' + rank.name + '<small> · ' + rank.points_required + ' pts</small></strong><span>' + (unlocked ? 'Débloqué' : 'À venir') + '</span><p>' + rank.reward + '</p>'; list.appendChild(item); });
+  const used = state.member?.reward_redemptions || [];
+  state.ranks.forEach(rank => {
+    const unlocked = points >= Number(rank.points_required);
+    const redeemed = used.find(r => r.rank_name === rank.name && Number(r.points_required) === Number(rank.points_required));
+    const item = document.createElement('article');
+    item.className = 'reward-item' + (unlocked ? '' : ' locked') + (redeemed ? ' redeemed' : '');
+    item.innerHTML = '<strong>' + escapeHtml(rank.name) + '<small> · ' + Number(rank.points_required) + ' pts</small></strong><span>' + (redeemed ? 'Déjà utilisé' : unlocked ? 'Débloqué' : 'À venir') + '</span><p>' + escapeHtml(rank.reward) + '</p>';
+    list.appendChild(item);
+  });
 }
 async function getMemberWithVisits(code) {
   const { data, error } = await db.rpc('get_member_card', { p_code: code });
@@ -174,11 +182,28 @@ async function loadAdmin() {
     const item = document.createElement('article');
     item.className = 'client-item client-item-admin';
     item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small></div><div class="client-actions"><button class="mini-action correct-client" type="button" data-client-code="' + escapeHtml(m.code) + '" data-client-points="' + Number(m.points || 0) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Corriger</button><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button></div>';
+    const rewards = adminRewardHtml(m);
+    if (rewards) item.insertAdjacentHTML('beforeend', rewards);
     list.appendChild(item);
   });
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
   admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
   renderRankEditor();
+}
+function adminRewardHtml(member) {
+  const points = Number(member.points || 0);
+  const redemptions = member.reward_redemptions || [];
+  const eligible = state.ranks.filter(rank => Number(rank.points_required) > 0 && points >= Number(rank.points_required));
+  if (!eligible.length) return '<div class="admin-rewards empty">Aucun cadeau débloqué pour le moment.</div>';
+  const rows = eligible.map(rank => {
+    const used = redemptions.find(r => r.rank_name === rank.name && Number(r.points_required) === Number(rank.points_required));
+    if (used) {
+      const date = used.created_at ? new Date(used.created_at).toLocaleDateString('fr-FR') : '';
+      return '<article class="admin-reward used"><div><strong>' + escapeHtml(rank.name) + '</strong><span>Utilisé' + (date ? ' le ' + date : '') + '</span><small>' + escapeHtml(rank.reward) + '</small></div></article>';
+    }
+    return '<article class="admin-reward available"><div><strong>' + escapeHtml(rank.name) + '</strong><span>Cadeau disponible</span><small>' + escapeHtml(rank.reward) + '</small></div><button class="mini-action redeem-reward" type="button" data-client-id="' + escapeHtml(member.id) + '" data-client-name="' + escapeHtml(fullName(member) || member.code) + '" data-rank-name="' + escapeHtml(rank.name) + '" data-rank-points="' + Number(rank.points_required) + '" data-rank-reward="' + escapeHtml(rank.reward) + '">Marquer utilisé</button></article>';
+  }).join('');
+  return '<div class="admin-rewards"><p>Cadeaux paliers</p>' + rows + '</div>';
 }
 function renderRankEditor() {
   const wrap = $('gradeEditor'); wrap.innerHTML = '';
@@ -225,6 +250,20 @@ async function correctClientPoints(code, currentPoints, memberName) {
   if (state.member && state.member.code === updated.code) renderClient(updated);
   toast('Points corrigés');
   await loadAdmin();
+}
+async function redeemReward(memberId, memberName, rankName, pointsRequired, reward) {
+  if (!confirm('Marquer le cadeau "' + rankName + '" comme utilisé pour ' + memberName + ' ?')) return;
+  const { error } = await db.rpc('admin_redeem_reward', {
+    p_pin: state.adminPin,
+    p_member_id: memberId,
+    p_rank_name: rankName,
+    p_points_required: Number(pointsRequired || 0),
+    p_reward: reward
+  });
+  if (error) return toast(error.message);
+  toast('Cadeau marqué utilisé');
+  await loadAdmin();
+  if (state.member) await refreshMember();
 }
 async function updateMenu(e) {
   e.preventDefault();
@@ -288,6 +327,8 @@ function bindUi() {
     if (button) deleteClient(button.dataset.clientId, button.dataset.clientName || 'ce client');
     const correctButton = event.target.closest('.correct-client');
     if (correctButton) correctClientPoints(correctButton.dataset.clientCode, correctButton.dataset.clientPoints, correctButton.dataset.clientName || 'ce client');
+    const rewardButton = event.target.closest('.redeem-reward');
+    if (rewardButton) redeemReward(rewardButton.dataset.clientId, rewardButton.dataset.clientName || 'ce client', rewardButton.dataset.rankName, rewardButton.dataset.rankPoints, rewardButton.dataset.rankReward);
   });
   $('saveRanks').addEventListener('click', saveRanks);
   $('openScanner').addEventListener('click', startScanner);
