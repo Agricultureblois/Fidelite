@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="L'Agriculture">
   <link rel="apple-touch-icon" href="logo-agriculture.jpg">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 </head>
@@ -30,20 +30,34 @@
         <form id="signupForm" class="signup-form">
           <label for="firstNameInput">Prénom</label>
           <input id="firstNameInput" autocomplete="given-name" placeholder="Camille" required>
-          <label for="lastNameInput">Nom</label>
-          <input id="lastNameInput" autocomplete="family-name" placeholder="Dupont">
           <label for="phoneInput">Téléphone</label>
-          <div class="input-row"><input id="phoneInput" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" required><button type="submit">Entrer</button></div>
+          <div class="input-row"><input id="phoneInput" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" maxlength="14" required><button type="submit">Entrer</button></div>
           <p class="hint">Votre prénom et votre téléphone servent uniquement à votre fidélité L'Agriculture. Ensuite, ajoutez la carte à votre écran d'accueil.</p>
         </form>
       </section>
 
       <section class="app-content" id="clientApp" hidden>
         <article class="loyalty-card">
-          <div class="card-head"><div><p class="eyebrow" id="welcomeName">Bienvenue</p><h2 id="currentRank">Stagiaire</h2></div><span class="points-pill"><strong id="pointsValue">0</strong> pts</span></div>
-          <div class="progress-wrap"><div class="progress-meta"><span id="rankProgressLabel">0 / 100 points</span><span id="nextRankLabel">Apprenti</span></div><div class="progress-track"><span id="progressBar"></span></div></div>
+          <div class="card-head">
+            <p class="eyebrow" id="welcomeName">Bienvenue</p>
+            <span class="rank-tag" id="currentRank">Stagiaire</span>
+          </div>
+          <div class="points-hero"><strong id="pointsValue">0</strong><span>points</span></div>
+          <div class="progress-wrap">
+            <div class="progress-track"><span id="progressBar"></span></div>
+            <p class="progress-headline" id="rankProgressLabel">0 / 100 points</p>
+          </div>
+          <div class="next-reward-preview" id="nextRewardPreview">
+            <p class="eyebrow" id="nextRewardLabel">Prochaine récompense</p>
+            <p id="nextRewardText"></p>
+          </div>
         </article>
-        <nav class="tabs"><button class="tab active" data-tab="dashboard" type="button">Accueil</button><button class="tab" data-tab="rewards" type="button">Récompenses</button><button class="tab" data-tab="menu" type="button">Menu</button><button class="tab" data-tab="qr" type="button">QR</button></nav>
+        <div class="bottom-bar" id="bottomBar">
+          <button class="fab-qr" id="quickQr" type="button" aria-label="Voir mon QR code" title="Mon QR code">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><line x1="14" y1="14" x2="14" y2="21"></line><line x1="21" y1="14" x2="21" y2="21"></line><line x1="14" y1="17.5" x2="21" y2="17.5"></line></svg>
+          </button>
+          <nav class="tabs"><button class="tab active" data-tab="dashboard" type="button">Accueil</button><button class="tab" data-tab="rewards" type="button">Récompenses</button><button class="tab" data-tab="menu" type="button">Menu</button><button class="tab" data-tab="qr" type="button">QR</button></nav>
+        </div>
         <section class="tab-panel active" id="dashboard"><article class="install-card" id="installCard"><div><h3>Gardez votre carte sur le téléphone</h3><p id="installHelp">Ajoutez cette carte à votre écran d'accueil pour la retrouver comme une application.</p></div><button class="mini-action" id="installApp" type="button">Comment l'ajouter ?</button></article><div class="section-title"><h3>Dernières visites</h3><button class="mini-action" id="refreshClient" type="button">Actualiser</button></div><div class="history-list" id="historyList"></div></section>
         <section class="tab-panel" id="rewards"><div class="section-title"><h3>Avantages</h3><span>Selon vos points</span></div><div class="reward-list" id="rewardList"></div></section>
         <section class="tab-panel" id="menu"><article class="menu-board"><p class="panel-label">Aujourd'hui</p><h3>Menu du jour</h3><dl><div><dt>Entrée</dt><dd id="menuStarter"></dd></div><div><dt>Plat</dt><dd id="menuMain"></dd></div><div><dt>Dessert</dt><dd id="menuDessert"></dd></div></dl><p class="menu-price" id="menuPrice"></p></article></section>
@@ -67,6 +81,6 @@
     </section>
   </main>
   <div class="toast" id="toast" hidden></div>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

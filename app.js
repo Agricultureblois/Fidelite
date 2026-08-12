@@ -33,6 +33,7 @@ let state = { member: null, ranks: [], menu: null, adminPin: '' };
 
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; setTimeout(() => $('toast').hidden = true, 2200); }
 function normalizePhone(v) { return String(v || '').replace(/[^\d+]/g, '').replace(/^0033/, '+33'); }
+function formatPhoneDisplay(v) { const digits = String(v || '').replace(/[^\d]/g, '').slice(0, 10); return digits.replace(/(\d{2})(?=\d)/g, '$1 '); }
 function normalizePin(v) { return String(v || '').replace(/[^\d]/g, ''); }
 function memberCode(phone) { return 'AGRI-' + String(phone || '').replace(/[^\d]/g, ''); }
 function qrUrl(data) { return 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(data); }
@@ -82,13 +83,18 @@ function renderClient(member) {
   const next = nextRankFor(points);
   const base = Number(rank.points_required || 0);
   const target = Number(next.points_required || base);
-  const ratio = target === base ? 100 : Math.min(100, Math.round(((points - base) / (target - base)) * 100));
+  const maxed = target === base;
+  const ratio = maxed ? 100 : Math.min(100, Math.round(((points - base) / (target - base)) * 100));
+  const remaining = maxed ? 0 : Math.max(0, target - points);
   $('welcomeName').textContent = member.first_name ? 'Bonjour ' + member.first_name : 'Bienvenue';
   $('currentRank').textContent = rank.name;
   $('pointsValue').textContent = points;
-  $('rankProgressLabel').textContent = target === base ? 'Grade maximum atteint' : (points - base) + ' / ' + (target - base) + ' points';
-  $('nextRankLabel').textContent = target === base ? rank.name : next.name;
   $('progressBar').style.width = ratio + '%';
+  $('rankProgressLabel').textContent = maxed
+    ? 'Grade maximum atteint 🎉'
+    : 'Plus que ' + remaining + ' point' + (remaining > 1 ? 's' : '') + ' avant ' + next.name;
+  $('nextRewardLabel').textContent = maxed ? rank.name + ' · grade actuel' : next.name + ' · ' + target + ' pts';
+  $('nextRewardText').textContent = (maxed ? rank.reward : next.reward) || '';
   $('memberCode').textContent = member.code;
   $('qrImage').src = qrUrl(JSON.stringify({ code: member.code, firstName: member.first_name || '', lastName: member.last_name || '', phone: member.phone || '' }));
   renderHistory(member.visits || []);
@@ -101,7 +107,9 @@ function renderClient(member) {
 function renderHistory(visits) {
   const list = $('historyList'); list.innerHTML = '';
   if (!visits.length) { list.innerHTML = '<article class="history-item"><strong>Aucune visite enregistrée</strong><span>0 pt</span></article>'; return; }
-  visits.slice().reverse().forEach(v => { const item = document.createElement('article'); item.className = 'history-item'; item.innerHTML = '<strong>' + new Date(v.created_at).toLocaleDateString('fr-FR') + '</strong><span>+' + v.points + ' pts · ' + money.format(v.amount) + '</span>'; list.appendChild(item); });
+  let running = 0;
+  const withBalance = visits.map(v => { running += Number(v.points || 0); return Object.assign({}, v, { balance: running }); });
+  withBalance.slice().reverse().forEach(v => { const item = document.createElement('article'); item.className = 'history-item'; item.innerHTML = '<strong>' + new Date(v.created_at).toLocaleDateString('fr-FR') + '</strong><span>+' + v.points + ' pts · ' + money.format(v.amount) + '</span><small>Solde après visite : ' + v.balance + ' pts</small>'; list.appendChild(item); });
 }
 function renderRewards(points) {
   const list = $('rewardList'); list.innerHTML = '';
@@ -134,7 +142,8 @@ async function refreshMember() {
 async function signup(e) {
   e.preventDefault();
   const firstName = $('firstNameInput').value.trim();
-  const lastName = $('lastNameInput').value.trim();
+  const lastNameField = $('lastNameInput');
+  const lastName = lastNameField ? lastNameField.value.trim() : '';
   const phone = normalizePhone($('phoneInput').value);
   if (!firstName || phone.length < 8) return toast('Prénom et téléphone requis');
   const code = memberCode(phone);
@@ -297,6 +306,16 @@ async function startScanner() {
 function bindUi() {
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active'); $(tab.dataset.tab).classList.add('active'); }));
   $('signupForm').addEventListener('submit', signup);
+  $('phoneInput').addEventListener('input', (e) => { e.target.value = formatPhoneDisplay(e.target.value); });
+  const quickQr = $('quickQr');
+  if (quickQr) quickQr.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const qrTabBtn = document.querySelector('.tab[data-tab="qr"]');
+    if (qrTabBtn) qrTabBtn.classList.add('active');
+    $('qr').classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
   $('installApp').addEventListener('click', () => {
     $('installPanel').hidden = false;
     setupInstallHelp();
