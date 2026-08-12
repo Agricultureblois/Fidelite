@@ -62,7 +62,35 @@ async function loadPublicData() {
   const menuRes = await db.from('daily_menu').select('*').eq('id', 1).single();
   if (menuRes.error) throw menuRes.error;
   state.menu = menuRes.data;
+  checkMenuUpdate(state.menu);
   renderMenu();
+}
+function rankIndexFor(points) {
+  let idx = 0;
+  state.ranks.forEach((r, i) => { if (points >= Number(r.points_required)) idx = i; });
+  return idx;
+}
+function checkMenuUpdate(menu) {
+  if (!menu || !menu.updated_at) return;
+  const key = 'agriLastSeenMenuUpdatedAt';
+  const stored = localStorage.getItem(key);
+  const hasMember = !!localStorage.getItem('agriMemberCode') || !!localStorage.getItem('agriMemberPhone');
+  if (stored && stored !== menu.updated_at && hasMember) $('menuUpdateBanner').hidden = false;
+  localStorage.setItem(key, menu.updated_at);
+}
+function checkGradeUp(member) {
+  if (!state.ranks.length) return;
+  const idx = rankIndexFor(Number(member.points || 0));
+  const rank = state.ranks[idx];
+  const key = 'agriLastSeenRankIdx_' + member.code;
+  const stored = localStorage.getItem(key);
+  const storedIdx = stored === null ? null : Number(stored);
+  if (storedIdx !== null && idx > storedIdx) {
+    $('gradeUpTitle').textContent = 'Bravo, vous êtes ' + rank.name + ' !';
+    $('gradeUpText').textContent = 'Récompense débloquée : ' + (rank.reward || '');
+    $('gradeUpBanner').hidden = false;
+  }
+  localStorage.setItem(key, String(idx));
 }
 function rankFor(points) { return state.ranks.reduce((cur, rank) => points >= Number(rank.points_required) ? rank : cur, state.ranks[0] || { name: 'Stagiaire', points_required: 0, reward: '' }); }
 function nextRankFor(points) { return state.ranks.find(rank => Number(rank.points_required) > points) || rankFor(points); }
@@ -82,6 +110,7 @@ function renderClient(member) {
   const points = Number(member.points || 0);
   const rank = rankFor(points);
   const next = nextRankFor(points);
+  checkGradeUp(member);
   const base = Number(rank.points_required || 0);
   const target = Number(next.points_required || base);
   const maxed = target === base;
@@ -361,6 +390,16 @@ function bindUi() {
   });
   $('closeInstallHelp').addEventListener('click', () => $('installPanel').hidden = true);
   $('refreshClient').addEventListener('click', refreshMember);
+  const gradeUpClose = $('gradeUpClose');
+  if (gradeUpClose) gradeUpClose.addEventListener('click', () => $('gradeUpBanner').hidden = true);
+  const menuUpdateClose = $('menuUpdateClose');
+  if (menuUpdateClose) menuUpdateClose.addEventListener('click', () => $('menuUpdateBanner').hidden = true);
+  const menuUpdateGo = $('menuUpdateGo');
+  if (menuUpdateGo) menuUpdateGo.addEventListener('click', () => {
+    $('menuUpdateBanner').hidden = true;
+    const menuTabBtn = document.querySelector('.tab[data-tab="menu"]');
+    if (menuTabBtn) menuTabBtn.click();
+  });
   const adminToggle = $('adminToggle');
   if (adminToggle) adminToggle.addEventListener('click', () => {
     localStorage.removeItem('agriAdminPin');
