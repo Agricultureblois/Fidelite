@@ -181,23 +181,56 @@ async function openAdmin() {
 async function loadAdmin() {
   const { data, error } = await db.rpc('admin_dashboard', { p_pin: state.adminPin });
   if (error) throw error;
-  const members = data?.members || [];
+  state.adminMembers = data?.members || [];
   const admins = data?.admins || [];
-  $('statClients').textContent = members.length;
-  $('statPoints').textContent = members.reduce((s, m) => s + Number(m.points || 0), 0);
+  $('statClients').textContent = state.adminMembers.length;
+  $('statPoints').textContent = state.adminMembers.reduce((s, m) => s + Number(m.points || 0), 0);
   $('statVisits').textContent = data?.visits_count || 0;
-  const list = $('clientList'); list.innerHTML = '';
-  members.forEach(m => {
-    const item = document.createElement('article');
-    item.className = 'client-item client-item-admin';
-    item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small></div><div class="client-actions"><button class="mini-action correct-client" type="button" data-client-code="' + escapeHtml(m.code) + '" data-client-points="' + Number(m.points || 0) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Corriger</button><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button></div>';
-    const rewards = adminRewardHtml(m);
-    if (rewards) item.insertAdjacentHTML('beforeend', rewards);
-    list.appendChild(item);
-  });
+  renderClientList();
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
   admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
   renderRankEditor();
+}
+function buildClientCard(m) {
+  const item = document.createElement('article');
+  item.className = 'client-item client-item-admin';
+  item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small></div><div class="client-actions"><button class="mini-action correct-client" type="button" data-client-code="' + escapeHtml(m.code) + '" data-client-points="' + Number(m.points || 0) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Corriger</button><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button></div>';
+  const rewards = adminRewardHtml(m);
+  if (rewards) item.insertAdjacentHTML('beforeend', rewards);
+  return item;
+}
+function filterMembers(members, query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return members;
+  return members.filter(m => (fullName(m) || '').toLowerCase().includes(q) || String(m.phone || '').toLowerCase().includes(q) || String(m.code || '').toLowerCase().includes(q));
+}
+function sortMembers(members, mode) {
+  const arr = members.slice();
+  if (mode === 'name_asc') arr.sort((a, b) => (fullName(a) || a.code).localeCompare(fullName(b) || b.code, 'fr'));
+  else if (mode === 'recent') arr.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+  else if (mode === 'points_asc') arr.sort((a, b) => Number(a.points || 0) - Number(b.points || 0));
+  else arr.sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
+  return arr;
+}
+function renderClientList() {
+  const list = $('clientList'); list.innerHTML = '';
+  const query = $('clientSearch') ? $('clientSearch').value : '';
+  const mode = $('clientSort') ? $('clientSort').value : 'points_desc';
+  const members = filterMembers(state.adminMembers || [], query);
+  if (!members.length) { list.innerHTML = '<p class="hint">Aucun client ne correspond à cette recherche.</p>'; return; }
+  if (mode === 'grade') {
+    state.ranks.slice().reverse().forEach(rank => {
+      const inGroup = members.filter(m => rankFor(Number(m.points || 0)).name === rank.name).sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
+      if (!inGroup.length) return;
+      const header = document.createElement('p');
+      header.className = 'client-group-title';
+      header.textContent = rank.name + ' · ' + inGroup.length;
+      list.appendChild(header);
+      inGroup.forEach(m => list.appendChild(buildClientCard(m)));
+    });
+  } else {
+    sortMembers(members, mode).forEach(m => list.appendChild(buildClientCard(m)));
+  }
 }
 function adminRewardHtml(member) {
   const points = Number(member.points || 0);
@@ -350,6 +383,10 @@ function bindUi() {
     if (rewardButton) redeemReward(rewardButton.dataset.clientId, rewardButton.dataset.clientName || 'ce client', rewardButton.dataset.rankName, rewardButton.dataset.rankPoints, rewardButton.dataset.rankReward);
   });
   $('saveRanks').addEventListener('click', saveRanks);
+  const clientSearch = $('clientSearch');
+  if (clientSearch) clientSearch.addEventListener('input', renderClientList);
+  const clientSort = $('clientSort');
+  if (clientSort) clientSort.addEventListener('change', renderClientList);
   $('openScanner').addEventListener('click', startScanner);
   $('closeScanner').addEventListener('click', stopScanner);
   $('copyCode').addEventListener('click', () => navigator.clipboard?.writeText($('memberCode').textContent));
