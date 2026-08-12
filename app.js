@@ -29,7 +29,8 @@ window.addEventListener('beforeinstallprompt', (event) => {
   const btn = $('installApp');
   if (btn) { btn.hidden = false; btn.textContent = 'Installer'; }
 });
-let state = { member: null, ranks: [], menu: null, adminPin: '' };
+let state = { member: null, ranks: [], menu: null, adminPin: '', staffMode: false, adminMembers: [] };
+const STAFF_ENTRY_HASH = '#equipe-lagriculture';
 
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; setTimeout(() => $('toast').hidden = true, 2200); }
 function normalizePhone(v) { return String(v || '').replace(/[^\d+]/g, '').replace(/^0033/, '+33'); }
@@ -360,16 +361,17 @@ function bindUi() {
   });
   $('closeInstallHelp').addEventListener('click', () => $('installPanel').hidden = true);
   $('refreshClient').addEventListener('click', refreshMember);
-  $('adminToggle').addEventListener('click', () => {
+  const adminToggle = $('adminToggle');
+  if (adminToggle) adminToggle.addEventListener('click', () => {
     localStorage.removeItem('agriAdminPin');
     state.adminPin = '';
     $('adminPinInput').value = '';
     $('pinPanel').hidden = false;
   });
   $('unlockAdmin').addEventListener('click', unlockAdmin);
-  $('cancelPin').addEventListener('click', () => $('pinPanel').hidden = true);
-  $('closeAdmin').addEventListener('click', () => $('adminPanel').hidden = true);
-  $('logoutAdmin').addEventListener('click', () => { localStorage.removeItem('agriAdminPin'); state.adminPin = ''; $('adminPanel').hidden = true; toast('Admin déconnecté'); });
+  $('cancelPin').addEventListener('click', () => { $('pinPanel').hidden = true; if (!state.staffMode) return; });
+  $('closeAdmin').addEventListener('click', () => { $('adminPanel').hidden = true; if (state.staffMode) $('pinPanel').hidden = false; });
+  $('logoutAdmin').addEventListener('click', () => { localStorage.removeItem('agriAdminPin'); state.adminPin = ''; $('adminPanel').hidden = true; toast('Admin déconnecté'); if (state.staffMode) $('pinPanel').hidden = false; });
   $('addPoints').addEventListener('click', addPoints);
   $('scanCode').addEventListener('input', lookupScanCode);
   $('menuForm').addEventListener('submit', updateMenu);
@@ -393,8 +395,19 @@ function bindUi() {
   $('switchClient').addEventListener('click', () => { localStorage.removeItem('agriMemberCode'); localStorage.removeItem('agriMemberPhone'); state.member = null; $('clientApp').hidden = true; $('signinPanel').hidden = false; });
   window.addEventListener('focus', refreshMember);
 }
+function maybeOpenStaffEntry() {
+  if (window.location.hash !== STAFF_ENTRY_HASH) return;
+  state.staffMode = true;
+  $('signinPanel').hidden = true;
+  $('clientApp').hidden = true;
+  $('adminPanel').hidden = true;
+  $('pinPanel').hidden = false;
+  const pinInput = $('adminPinInput');
+  if (pinInput) pinInput.focus();
+}
 async function init() {
   bindUi();
+  window.addEventListener('hashchange', maybeOpenStaffEntry);
   if (!ensureConfig()) return;
   try {
     if ('serviceWorker' in navigator) {
@@ -407,6 +420,7 @@ async function init() {
     }
   } catch {}
   try { await loadPublicData(); await refreshMember(); } catch (e) { toast(e.message || 'Erreur de connexion'); }
+  maybeOpenStaffEntry();
 }
 init();
 
