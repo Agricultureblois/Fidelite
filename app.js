@@ -105,6 +105,48 @@ function renderMenu() {
   $('adminDessert').value = m.dessert || '';
   $('adminPrice').value = m.price || '';
 }
+const CHALLENGE_TIERS = [{ tier: 1, visits: 5, points: 30 }, { tier: 2, visits: 10, points: 70 }];
+function currentPeriod() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function visitsThisMonth(visits) {
+  const period = currentPeriod();
+  return (visits || []).filter(v => v.created_at && v.created_at.slice(0, 7) === period).length;
+}
+function renderChallenge(member) {
+  const card = $('challengeCard');
+  if (!card) return;
+  const visitCount = visitsThisMonth(member.visits || []);
+  const claimed = new Set((member.challenge_claims || []).map(c => Number(c.tier)));
+  const next = CHALLENGE_TIERS.find(t => !claimed.has(t.tier));
+  const btn = $('challengeClaim');
+  if (!next) {
+    card.hidden = false;
+    $('challengeText').textContent = 'Défi du mois réussi 🎉 Rendez-vous le mois prochain pour recommencer.';
+    $('challengeBar').style.width = '100%';
+    btn.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  const ratio = Math.min(100, Math.round((visitCount / next.visits) * 100));
+  $('challengeBar').style.width = ratio + '%';
+  const remaining = Math.max(0, next.visits - visitCount);
+  if (remaining === 0) {
+    $('challengeText').textContent = 'Défi validé : ' + visitCount + '/' + next.visits + ' visites ce mois-ci !';
+    btn.hidden = false;
+    btn.textContent = 'Récupérer mes +' + next.points + ' pts';
+    btn.dataset.tier = String(next.tier);
+  } else {
+    $('challengeText').textContent = visitCount + '/' + next.visits + ' visites ce mois-ci — encore ' + remaining + ' pour +' + next.points + ' pts';
+    btn.hidden = true;
+  }
+}
+async function claimChallenge() {
+  const tier = Number($('challengeClaim').dataset.tier || 0);
+  if (!tier || !state.member) return;
+  const { data, error } = await db.rpc('claim_challenge', { p_code: state.member.code, p_tier: tier });
+  if (error) return toast(error.message);
+  toast('Bonus du défi récupéré ! 🔥');
+  renderClient(data);
+}
 function renderClient(member) {
   state.member = member;
   const points = Number(member.points || 0);
@@ -128,6 +170,7 @@ function renderClient(member) {
   $('memberCode').textContent = member.code;
   $('qrImage').src = qrUrl(JSON.stringify({ code: member.code, firstName: member.first_name || '', lastName: member.last_name || '', phone: member.phone || '' }));
   renderHistory(member.visits || []);
+  renderChallenge(member);
   renderRewards(points);
   $('signinPanel').hidden = true;
   $('clientApp').hidden = false;
@@ -390,6 +433,8 @@ function bindUi() {
   });
   $('closeInstallHelp').addEventListener('click', () => $('installPanel').hidden = true);
   $('refreshClient').addEventListener('click', refreshMember);
+  const challengeClaim = $('challengeClaim');
+  if (challengeClaim) challengeClaim.addEventListener('click', claimChallenge);
   const gradeUpClose = $('gradeUpClose');
   if (gradeUpClose) gradeUpClose.addEventListener('click', () => $('gradeUpBanner').hidden = true);
   const menuUpdateClose = $('menuUpdateClose');

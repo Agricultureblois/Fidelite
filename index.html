@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="L'Agriculture">
   <link rel="apple-touch-icon" href="logo-agriculture.jpg">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 </head>
@@ -57,7 +57,7 @@
           </button>
           <nav class="tabs"><button class="tab active" data-tab="dashboard" type="button">Accueil</button><button class="tab" data-tab="rewards" type="button">Récompenses</button><button class="tab" data-tab="menu" type="button">Menu</button><button class="tab" data-tab="qr" type="button">QR</button></nav>
         </div>
-        <section class="tab-panel active" id="dashboard"><article class="celebrate-banner" id="gradeUpBanner" hidden><span class="celebrate-emoji">🎉</span><div><strong id="gradeUpTitle">Nouveau grade débloqué !</strong><p id="gradeUpText"></p></div><button class="mini-action" id="gradeUpClose" type="button" aria-label="Fermer">✕</button></article><article class="menu-update-banner" id="menuUpdateBanner" hidden><span class="celebrate-emoji">🍽️</span><div><strong>Le menu du jour a changé</strong><p>Découvrez la nouvelle formule.</p></div><button class="mini-action" id="menuUpdateGo" type="button">Voir</button><button class="ghost-button" id="menuUpdateClose" type="button" aria-label="Fermer">✕</button></article><article class="install-card" id="installCard"><div><h3>Gardez votre carte sur le téléphone</h3><p id="installHelp">Ajoutez cette carte à votre écran d'accueil pour la retrouver comme une application.</p></div><button class="mini-action" id="installApp" type="button">Comment l'ajouter ?</button></article><div class="section-title"><h3>Dernières visites</h3><button class="mini-action" id="refreshClient" type="button">Actualiser</button></div><div class="history-list" id="historyList"></div></section>
+        <section class="tab-panel active" id="dashboard"><article class="celebrate-banner" id="gradeUpBanner" hidden><span class="celebrate-emoji">🎉</span><div><strong id="gradeUpTitle">Nouveau grade débloqué !</strong><p id="gradeUpText"></p></div><button class="mini-action" id="gradeUpClose" type="button" aria-label="Fermer">✕</button></article><article class="menu-update-banner" id="menuUpdateBanner" hidden><span class="celebrate-emoji">🍽️</span><div><strong>Le menu du jour a changé</strong><p>Découvrez la nouvelle formule.</p></div><button class="mini-action" id="menuUpdateGo" type="button">Voir</button><button class="ghost-button" id="menuUpdateClose" type="button" aria-label="Fermer">✕</button></article><article class="challenge-card" id="challengeCard" hidden><p class="eyebrow">🔥 Défi du mois</p><p id="challengeText"></p><div class="progress-track"><span id="challengeBar"></span></div><button class="mini-action" id="challengeClaim" hidden type="button"></button></article><article class="install-card" id="installCard"><div><h3>Gardez votre carte sur le téléphone</h3><p id="installHelp">Ajoutez cette carte à votre écran d'accueil pour la retrouver comme une application.</p></div><button class="mini-action" id="installApp" type="button">Comment l'ajouter ?</button></article><div class="section-title"><h3>Dernières visites</h3><button class="mini-action" id="refreshClient" type="button">Actualiser</button></div><div class="history-list" id="historyList"></div></section>
         <section class="tab-panel" id="rewards"><div class="section-title"><h3>Avantages</h3><span>Selon vos points</span></div><div class="reward-list" id="rewardList"></div></section>
         <section class="tab-panel" id="menu"><article class="menu-board"><p class="panel-label">Aujourd'hui</p><h3>Menu du jour</h3><dl><div><dt>Entrée</dt><dd id="menuStarter"></dd></div><div><dt>Plat</dt><dd id="menuMain"></dd></div><div><dt>Dessert</dt><dd id="menuDessert"></dd></div></dl><p class="menu-price" id="menuPrice"></p></article></section>
         <section class="tab-panel" id="qr"><article class="qr-card"><img id="qrImage" alt="QR code personnel"><p id="memberCode"></p><button class="secondary-action" id="copyCode" type="button">Copier le code</button><button class="ghost-button" id="switchClient" type="button">Changer de client</button></article></section>
@@ -80,6 +80,6 @@
     </section>
   </main>
   <div class="toast" id="toast" hidden></div>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
