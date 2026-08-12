@@ -235,7 +235,14 @@ async function unlockAdmin() {
     state.adminPin = '';
     return toast(error.message || 'Connexion admin impossible');
   }
-  localStorage.removeItem('agriAdminPin');
+  localStorage.setItem('agriAdminPin', state.adminPin);
+  $('pinPanel').hidden = true;
+  await openAdmin();
+}
+async function tryStoredAdmin() {
+  const stored = localStorage.getItem('agriAdminPin');
+  if (!stored) return;
+  state.adminPin = stored;
   $('pinPanel').hidden = true;
   await openAdmin();
 }
@@ -488,6 +495,7 @@ function maybeOpenStaffEntry() {
   $('pinPanel').hidden = false;
   const pinInput = $('adminPinInput');
   if (pinInput) pinInput.focus();
+  tryStoredAdmin();
 }
 async function init() {
   bindUi();
