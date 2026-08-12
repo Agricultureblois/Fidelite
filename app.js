@@ -331,11 +331,11 @@ function renderRankEditor() {
   const wrap = $('gradeEditor'); wrap.innerHTML = '';
   state.ranks.forEach((r, i) => { const row = document.createElement('article'); row.className = 'grade-row'; row.innerHTML = '<input data-rank-name="' + i + '" value="' + r.name.replace(/"/g,'&quot;') + '"><input data-rank-points="' + i + '" type="number" value="' + r.points_required + '"><textarea data-rank-reward="' + i + '" rows="2">' + r.reward + '</textarea>'; wrap.appendChild(row); });
 }
-async function addPoints() {
+async function creditPoints(amount) {
   const code = $('scanCode').value.trim().toUpperCase();
-  const amount = Math.round(Number($('amountSpent').value || 0));
-  if (!code || !amount) return toast('Code et montant requis');
-  const pts = Math.max(0, amount);
+  const amt = Math.round(Number(amount || 0));
+  if (!code || !amt) return toast('Sélectionnez un client et un montant');
+  const pts = Math.max(0, amt);
   const { data: updated, error } = await db.rpc('admin_add_points', { p_pin: state.adminPin, p_code: code, p_amount: pts });
   if (error) return toast(error.message);
   $('amountSpent').value = '';
@@ -343,11 +343,39 @@ async function addPoints() {
   if (state.member && state.member.code === updated.code) renderClient(updated);
   await loadAdmin();
 }
+async function addPoints() { await creditPoints($('amountSpent').value); }
+function hideScanResults() { const list = $('scanResults'); if (list) list.hidden = true; }
+function selectScanResult(member) {
+  $('scanCode').value = member.code;
+  $('adminClientName').value = fullName(member) || member.code;
+  hideScanResults();
+  $('amountSpent').focus();
+}
+function renderScanResults(members) {
+  const list = $('scanResults');
+  if (!list) return;
+  if (!members.length) { list.hidden = true; list.innerHTML = ''; return; }
+  list.innerHTML = '';
+  members.slice(0, 6).forEach(m => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.innerHTML = '<strong>' + escapeHtml(fullName(m) || m.code) + '</strong><span>' + escapeHtml(m.phone || '') + ' · ' + Number(m.points || 0) + ' pts</span>';
+    item.addEventListener('click', () => selectScanResult(m));
+    list.appendChild(item);
+  });
+  list.hidden = false;
+}
 async function lookupScanCode() {
-  const code = $('scanCode').value.trim().toUpperCase();
-  if (code.length < 8) return;
-  const m = await getMemberWithVisits(code);
-  if (m) $('adminClientName').value = fullName(m) || m.code;
+  const raw = $('scanCode').value.trim();
+  const code = raw.toUpperCase();
+  if (code.startsWith('AGRI-') && code.length >= 8) {
+    hideScanResults();
+    const m = await getMemberWithVisits(code);
+    if (m) $('adminClientName').value = fullName(m) || m.code;
+    return;
+  }
+  if (raw.length < 2) return hideScanResults();
+  renderScanResults(filterMembers(state.adminMembers || [], raw));
 }
 async function deleteClient(memberId, memberName) {
   if (!memberId) return;
@@ -465,6 +493,11 @@ function bindUi() {
   $('logoutAdmin').addEventListener('click', () => { localStorage.removeItem('agriAdminPin'); state.adminPin = ''; $('adminPanel').hidden = true; toast('Admin déconnecté'); if (state.staffMode) $('pinPanel').hidden = false; });
   $('addPoints').addEventListener('click', addPoints);
   $('scanCode').addEventListener('input', lookupScanCode);
+  const quickAmounts = $('quickAmounts');
+  if (quickAmounts) quickAmounts.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-amount]');
+    if (button) creditPoints(button.dataset.amount);
+  });
   $('menuForm').addEventListener('submit', updateMenu);
   $('adminUserForm').addEventListener('submit', addAdmin);
   $('clientList').addEventListener('click', (event) => {

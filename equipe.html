@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Équipe">
   <link rel="apple-touch-icon" href="logo-agriculture.jpg">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 </head>
@@ -68,7 +68,7 @@
       <section class="admin-panel" id="adminPanel" hidden>
         <div class="admin-head"><div><p class="panel-label">Espace administrateur connecté</p><h2>Gestion fidélité</h2></div><div class="admin-actions"><button class="ghost-button" id="closeAdmin" type="button">Fermer</button><button class="danger-action" id="logoutAdmin" type="button">Déconnexion</button></div></div>
         <div class="admin-grid">
-          <article class="admin-card"><h3>Scanner / créditer</h3><label>Code client</label><div class="input-row"><input id="scanCode" placeholder="AGRI-..."><button class="mini-action" id="openScanner" type="button">Scanner</button></div><label>Client reconnu</label><input id="adminClientName" placeholder="Prénom Nom"><label>Montant dépensé</label><div class="input-row"><input id="amountSpent" type="number" min="1" step="1" placeholder="20"><button id="addPoints" type="button">Ajouter</button></div><p class="hint">Les points sont envoyés en base : le client les voit après actualisation.</p></article>
+          <article class="admin-card"><h3>Scanner / créditer</h3><label>Code client</label><div class="input-row"><input id="scanCode" placeholder="Nom, téléphone ou code AGRI-..." autocomplete="off"><button class="mini-action" id="openScanner" type="button">Scanner</button></div><div class="search-dropdown" id="scanResults" hidden></div><label>Client reconnu</label><input id="adminClientName" placeholder="Prénom Nom" readonly><label>Montant dépensé</label><div class="quick-amounts" id="quickAmounts"><button class="mini-action" type="button" data-amount="5">5 €</button><button class="mini-action" type="button" data-amount="10">10 €</button><button class="mini-action" type="button" data-amount="15">15 €</button><button class="mini-action" type="button" data-amount="20">20 €</button></div><div class="input-row"><input id="amountSpent" type="number" min="1" step="1" placeholder="Autre montant"><button id="addPoints" type="button">Ajouter</button></div><p class="hint">Les points sont envoyés en base : le client les voit après actualisation.</p></article>
           <article class="admin-card"><h3>Menu du jour</h3><form id="menuForm" class="stack-form"><input id="adminStarter" placeholder="Entrée"><input id="adminMain" placeholder="Plat"><input id="adminDessert" placeholder="Dessert"><input id="adminPrice" placeholder="Prix"><button type="submit">Mettre à jour</button></form></article>
           <article class="admin-card"><h3>Autres administrateurs</h3><form id="adminUserForm" class="stack-form"><input id="newAdminName" placeholder="Nom admin"><input id="newAdminPin" inputmode="numeric" placeholder="Nouveau PIN"><button type="submit">Ajouter admin</button></form><div class="client-list" id="adminUsersList"></div></article>
           <article class="admin-card"><h3>Grades et cadeaux</h3><div class="grade-editor" id="gradeEditor"></div><button class="mini-action" id="saveRanks" type="button">Enregistrer les grades</button></article>
@@ -79,6 +79,6 @@
     </section>
   </main>
   <div class="toast" id="toast" hidden></div>
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>
