@@ -266,10 +266,25 @@ async function loadAdmin() {
   $('statClients').textContent = state.adminMembers.length;
   $('statPoints').textContent = state.adminMembers.reduce((s, m) => s + Number(m.points || 0), 0);
   $('statVisits').textContent = data?.visits_count || 0;
+  $('statRevenueMonth').textContent = money.format(Number(data?.revenue_month || 0));
+  $('statRevenueTotal').textContent = money.format(Number(data?.revenue_total || 0));
+  $('statBasket').textContent = money.format(Number(data?.avg_basket || 0));
+  renderBarChart('weekdayChart', data?.visits_by_weekday || []);
+  renderBarChart('hourChart', data?.visits_by_hour || [], 3);
   renderClientList();
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
   admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
   renderRankEditor();
+}
+function renderBarChart(id, items, labelEvery) {
+  const el = $(id);
+  if (!el) return;
+  const max = Math.max(1, ...items.map(i => Number(i.count || 0)));
+  el.innerHTML = items.map((i, idx) => {
+    const h = Math.round((Number(i.count || 0) / max) * 100);
+    const showLabel = !labelEvery || idx % labelEvery === 0;
+    return '<div class="bar" title="' + escapeHtml(i.label) + ' : ' + Number(i.count || 0) + '"><span style="height:' + Math.max(2, h) + '%"></span><small>' + (showLabel ? escapeHtml(i.label) : '') + '</small></div>';
+  }).join('');
 }
 function daysSinceActivity(m) {
   const d = new Date(m.updated_at || m.created_at);
