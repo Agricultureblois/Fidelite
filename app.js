@@ -474,6 +474,13 @@ async function startScanner() {
 }
 function bindUi() {
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active'); $(tab.dataset.tab).classList.add('active'); }));
+  document.querySelectorAll('.admin-tab').forEach(tab => tab.addEventListener('click', () => {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    const panel = document.querySelector('.admin-tab-panel[data-admin-panel="' + tab.dataset.adminTab + '"]');
+    if (panel) panel.classList.add('active');
+  }));
   $('signupForm').addEventListener('submit', signup);
   $('phoneInput').addEventListener('input', (e) => { e.target.value = formatPhoneDisplay(e.target.value); });
   const quickQr = $('quickQr');
