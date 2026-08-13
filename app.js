@@ -289,6 +289,10 @@ async function loadAdmin() {
   $('statBasket').textContent = money.format(Number(data?.avg_basket || 0));
   renderBarChart('weekdayChart', data?.visits_by_weekday || []);
   renderBarChart('hourChart', data?.visits_by_hour || [], 3);
+  $('statRewardsMonth').textContent = data?.rewards_redeemed_month || 0;
+  $('statRewardsTotal').textContent = data?.rewards_redeemed_total || 0;
+  const topReward = (data?.rewards_by_rank || [])[0];
+  $('statTopReward').textContent = topReward ? topReward.label + ' (' + topReward.count + ')' : '—';
   renderClientList();
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
   admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
@@ -337,6 +341,30 @@ function sortMembers(members, mode) {
   else if (mode === 'points_asc') arr.sort((a, b) => Number(a.points || 0) - Number(b.points || 0));
   else arr.sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
   return arr;
+}
+function csvCell(value) { return '"' + String(value ?? '').replace(/"/g, '""') + '"'; }
+function exportClientsCsv() {
+  const members = state.adminMembers || [];
+  if (!members.length) return toast('Aucun client à exporter');
+  const rows = [['Prenom', 'Telephone', 'Code', 'Points', 'Grade', 'Inscription']];
+  members.forEach(m => rows.push([
+    fullName(m) || '',
+    m.phone || '',
+    m.code || '',
+    Number(m.points || 0),
+    rankFor(Number(m.points || 0)).name,
+    m.created_at ? new Date(m.created_at).toLocaleDateString('fr-FR') : ''
+  ]));
+  const csv = rows.map(r => r.map(csvCell).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'clients-agriculture-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 function renderClientList() {
   const list = $('clientList'); list.innerHTML = '';
@@ -588,6 +616,8 @@ function bindUi() {
     if (rewardButton) redeemReward(rewardButton.dataset.clientId, rewardButton.dataset.clientName || 'ce client', rewardButton.dataset.rankName, rewardButton.dataset.rankPoints, rewardButton.dataset.rankReward);
   });
   $('saveRanks').addEventListener('click', saveRanks);
+  const exportCsvBtn = $('exportCsv');
+  if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportClientsCsv);
   const clientSearch = $('clientSearch');
   if (clientSearch) clientSearch.addEventListener('input', renderClientList);
   const clientSort = $('clientSort');

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="L'Agriculture">
   <link rel="apple-touch-icon" href="logo-agriculture.jpg">
-  <link rel="stylesheet" href="styles.css?v=24">
+  <link rel="stylesheet" href="styles.css?v=25">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 </head>
@@ -73,7 +73,7 @@
           <article class="admin-card"><h3>Scanner / créditer</h3><label>Code client</label><div class="input-row"><input id="scanCode" placeholder="Nom, téléphone ou code AGRI-..." autocomplete="off"><button class="mini-action" id="openScanner" type="button">Scanner</button></div><div class="search-dropdown" id="scanResults" hidden></div><label>Client reconnu</label><input id="adminClientName" placeholder="Prénom Nom" readonly><div class="client-preview" id="clientPreview" hidden></div><label>Montant dépensé</label><div class="quick-amounts" id="quickAmounts"><button class="mini-action" type="button" data-amount="2">2 €</button><button class="mini-action" type="button" data-amount="3">3 €</button><button class="mini-action" type="button" data-amount="15">15 €</button><button class="mini-action" type="button" data-amount="20">20 €</button></div><div class="input-row"><input id="amountSpent" type="number" min="1" step="1" placeholder="Autre montant"><button id="addPoints" type="button">Ajouter</button></div><p class="hint">Les points sont envoyés en base : le client les voit après actualisation.</p></article>
         </div>
         <div class="admin-tab-panel" data-admin-panel="clients">
-          <article class="admin-card"><h3>Statistiques clients</h3><div class="stats"><span><strong id="statClients">0</strong> clients</span><span><strong id="statPoints">0</strong> points</span><span><strong id="statVisits">0</strong> visites</span></div><div class="stats"><span><strong id="statRevenueMonth">0 €</strong> CA ce mois</span><span><strong id="statRevenueTotal">0 €</strong> CA total</span><span><strong id="statBasket">0 €</strong> panier moyen</span></div><div class="chart-block"><p class="chart-label">Jours les plus actifs</p><div class="bar-chart" id="weekdayChart"></div></div><div class="chart-block"><p class="chart-label">Heures les plus actives</p><div class="bar-chart hours" id="hourChart"></div></div><div class="list-controls"><input id="clientSearch" type="search" placeholder="Rechercher (nom, téléphone, code)"><select id="clientSort"><option value="points_desc">Points décroissants</option><option value="grade">Regrouper par grade</option><option value="recent">Activité récente</option><option value="inactive">Clients à risque (inactifs)</option><option value="name_asc">Nom A → Z</option></select></div><div class="client-list" id="clientList"></div></article>
+          <article class="admin-card"><h3>Statistiques clients</h3><div class="stats"><span><strong id="statClients">0</strong> clients</span><span><strong id="statPoints">0</strong> points</span><span><strong id="statVisits">0</strong> visites</span></div><div class="stats"><span><strong id="statRevenueMonth">0 €</strong> CA ce mois</span><span><strong id="statRevenueTotal">0 €</strong> CA total</span><span><strong id="statBasket">0 €</strong> panier moyen</span></div><div class="stats"><span><strong id="statRewardsMonth">0</strong> cadeaux ce mois</span><span><strong id="statRewardsTotal">0</strong> cadeaux offerts</span><span><strong id="statTopReward">—</strong> le + demandé</span></div><div class="chart-block"><p class="chart-label">Jours les plus actifs</p><div class="bar-chart" id="weekdayChart"></div></div><div class="chart-block"><p class="chart-label">Heures les plus actives</p><div class="bar-chart hours" id="hourChart"></div></div><button class="secondary-action" id="exportCsv" type="button">Exporter la liste (CSV)</button><div class="list-controls"><input id="clientSearch" type="search" placeholder="Rechercher (nom, téléphone, code)"><select id="clientSort"><option value="points_desc">Points décroissants</option><option value="grade">Regrouper par grade</option><option value="recent">Activité récente</option><option value="inactive">Clients à risque (inactifs)</option><option value="name_asc">Nom A → Z</option></select></div><div class="client-list" id="clientList"></div></article>
         </div>
         <div class="admin-tab-panel" data-admin-panel="settings">
           <article class="admin-card"><h3>Menu du jour</h3><form id="menuForm" class="stack-form"><input id="adminStarter" placeholder="Entrée"><input id="adminMain" placeholder="Plat"><input id="adminDessert" placeholder="Dessert"><input id="adminPrice" placeholder="Prix"><button type="submit">Mettre à jour</button></form></article>
@@ -85,6 +85,6 @@
     </section>
   </main>
   <div class="toast" id="toast" hidden></div>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
