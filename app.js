@@ -184,17 +184,35 @@ function renderHistory(visits) {
   const withBalance = visits.map(v => { running += Number(v.points || 0); return Object.assign({}, v, { balance: running }); });
   withBalance.slice().reverse().forEach(v => { const item = document.createElement('article'); item.className = 'history-item'; item.innerHTML = '<strong>' + new Date(v.created_at).toLocaleDateString('fr-FR') + '</strong><span>+' + v.points + ' pts · ' + money.format(v.amount) + '</span><small>Solde après visite : ' + v.balance + ' pts</small>'; list.appendChild(item); });
 }
+function renderRewardItem(list, rank, kind) {
+  const item = document.createElement('article');
+  item.className = 'reward-item' + (kind === 'locked' ? ' locked' : '') + (kind === 'redeemed' ? ' redeemed' : '');
+  const statusLabel = kind === 'redeemed' ? 'Déjà utilisé' : kind === 'available' ? 'Débloqué' : 'À venir';
+  item.innerHTML = '<strong>' + escapeHtml(rank.name) + '<small> · ' + Number(rank.points_required) + ' pts</small></strong><span>' + statusLabel + '</span><p>' + escapeHtml(rank.reward) + '</p>';
+  list.appendChild(item);
+}
+function renderRewardGroup(list, title, ranks, kind) {
+  if (!ranks.length) return;
+  const header = document.createElement('p');
+  header.className = 'client-group-title';
+  header.textContent = title;
+  list.appendChild(header);
+  ranks.forEach(rank => renderRewardItem(list, rank, kind));
+}
 function renderRewards(points) {
   const list = $('rewardList'); list.innerHTML = '';
   const used = state.member?.reward_redemptions || [];
+  const available = [], redeemed = [], locked = [];
   state.ranks.forEach(rank => {
     const unlocked = points >= Number(rank.points_required);
-    const redeemed = used.find(r => r.rank_name === rank.name && Number(r.points_required) === Number(rank.points_required));
-    const item = document.createElement('article');
-    item.className = 'reward-item' + (unlocked ? '' : ' locked') + (redeemed ? ' redeemed' : '');
-    item.innerHTML = '<strong>' + escapeHtml(rank.name) + '<small> · ' + Number(rank.points_required) + ' pts</small></strong><span>' + (redeemed ? 'Déjà utilisé' : unlocked ? 'Débloqué' : 'À venir') + '</span><p>' + escapeHtml(rank.reward) + '</p>';
-    list.appendChild(item);
+    const isRedeemed = used.some(r => r.rank_name === rank.name && Number(r.points_required) === Number(rank.points_required));
+    if (isRedeemed) redeemed.push(rank);
+    else if (unlocked) available.push(rank);
+    else locked.push(rank);
   });
+  renderRewardGroup(list, '🎁 À récupérer', available, 'available');
+  renderRewardGroup(list, '✅ Déjà utilisés', redeemed, 'redeemed');
+  renderRewardGroup(list, '🔒 À venir', locked, 'locked');
 }
 async function getMemberWithVisits(code) {
   const { data, error } = await db.rpc('get_member_card', { p_code: code });
@@ -359,6 +377,18 @@ function renderRankEditor() {
   const wrap = $('gradeEditor'); wrap.innerHTML = '';
   state.ranks.forEach((r, i) => { const row = document.createElement('article'); row.className = 'grade-row'; row.innerHTML = '<input data-rank-name="' + i + '" value="' + r.name.replace(/"/g,'&quot;') + '"><input data-rank-points="' + i + '" type="number" value="' + r.points_required + '"><textarea data-rank-reward="' + i + '" rows="2">' + r.reward + '</textarea>'; wrap.appendChild(row); });
 }
+function renderClientPreview(member) {
+  const box = $('clientPreview');
+  if (!box) return;
+  if (!member) { box.hidden = true; box.innerHTML = ''; return; }
+  const points = Number(member.points || 0);
+  const rank = rankFor(points);
+  const visits = member.visits || [];
+  const last = visits.length ? new Date(visits[visits.length - 1].created_at).toLocaleDateString('fr-FR') : 'Aucune';
+  box.innerHTML = '<div class="stats"><span><strong>' + points + '</strong> points</span><span><strong>' + escapeHtml(rank.name) + '</strong> grade</span><span><strong>' + visits.length + '</strong> visites</span></div><p class="hint">Dernière visite : ' + escapeHtml(last) + '</p>';
+  box.insertAdjacentHTML('beforeend', adminRewardHtml(member));
+  box.hidden = false;
+}
 async function creditPoints(amount) {
   const code = $('scanCode').value.trim().toUpperCase();
   const amt = Math.round(Number(amount || 0));
@@ -369,15 +399,18 @@ async function creditPoints(amount) {
   $('amountSpent').value = '';
   toast('Points ajoutés à ' + (fullName(updated) || updated.code));
   if (state.member && state.member.code === updated.code) renderClient(updated);
+  renderClientPreview(updated);
   await loadAdmin();
 }
 async function addPoints() { await creditPoints($('amountSpent').value); }
 function hideScanResults() { const list = $('scanResults'); if (list) list.hidden = true; }
-function selectScanResult(member) {
+async function selectScanResult(member) {
   $('scanCode').value = member.code;
   $('adminClientName').value = fullName(member) || member.code;
   hideScanResults();
   $('amountSpent').focus();
+  const full = await getMemberWithVisits(member.code);
+  if (full) renderClientPreview(full);
 }
 function renderScanResults(members) {
   const list = $('scanResults');
@@ -399,9 +432,10 @@ async function lookupScanCode() {
   if (code.startsWith('AGRI-') && code.length >= 8) {
     hideScanResults();
     const m = await getMemberWithVisits(code);
-    if (m) $('adminClientName').value = fullName(m) || m.code;
+    if (m) { $('adminClientName').value = fullName(m) || m.code; renderClientPreview(m); }
     return;
   }
+  renderClientPreview(null);
   if (raw.length < 2) return hideScanResults();
   renderScanResults(filterMembers(state.adminMembers || [], raw));
 }
@@ -442,6 +476,11 @@ async function redeemReward(memberId, memberName, rankName, pointsRequired, rewa
   toast('Cadeau marqué utilisé');
   await loadAdmin();
   if (state.member) await refreshMember();
+  const previewBox = $('clientPreview');
+  if (previewBox && !previewBox.hidden) {
+    const code = $('scanCode').value.trim().toUpperCase();
+    if (code) { const m = await getMemberWithVisits(code); if (m) renderClientPreview(m); }
+  }
 }
 async function updateMenu(e) {
   e.preventDefault();
@@ -540,6 +579,11 @@ function bindUi() {
     if (button) deleteClient(button.dataset.clientId, button.dataset.clientName || 'ce client');
     const correctButton = event.target.closest('.correct-client');
     if (correctButton) correctClientPoints(correctButton.dataset.clientCode, correctButton.dataset.clientPoints, correctButton.dataset.clientName || 'ce client');
+    const rewardButton = event.target.closest('.redeem-reward');
+    if (rewardButton) redeemReward(rewardButton.dataset.clientId, rewardButton.dataset.clientName || 'ce client', rewardButton.dataset.rankName, rewardButton.dataset.rankPoints, rewardButton.dataset.rankReward);
+  });
+  const clientPreview = $('clientPreview');
+  if (clientPreview) clientPreview.addEventListener('click', (event) => {
     const rewardButton = event.target.closest('.redeem-reward');
     if (rewardButton) redeemReward(rewardButton.dataset.clientId, rewardButton.dataset.clientName || 'ce client', rewardButton.dataset.rankName, rewardButton.dataset.rankPoints, rewardButton.dataset.rankReward);
   });
