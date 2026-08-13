@@ -271,10 +271,22 @@ async function loadAdmin() {
   admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
   renderRankEditor();
 }
+function daysSinceActivity(m) {
+  const d = new Date(m.updated_at || m.created_at);
+  return isNaN(d) ? null : Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function activityLabel(days) {
+  if (days === null) return '';
+  if (days <= 0) return "Dernière activité : aujourd'hui";
+  if (days === 1) return 'Dernière activité : hier';
+  return 'Dernière activité : il y a ' + days + ' jours';
+}
 function buildClientCard(m) {
   const item = document.createElement('article');
   item.className = 'client-item client-item-admin';
-  item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small></div><div class="client-actions"><button class="mini-action correct-client" type="button" data-client-code="' + escapeHtml(m.code) + '" data-client-points="' + Number(m.points || 0) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Corriger</button><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button></div>';
+  const days = daysSinceActivity(m);
+  const atRisk = days !== null && days >= 30;
+  item.innerHTML = '<div><strong>' + escapeHtml(fullName(m) || 'Client') + '</strong><span>' + Number(m.points || 0) + ' pts · ' + escapeHtml(rankFor(m.points).name) + '</span><small>' + escapeHtml(m.code) + ' · ' + escapeHtml(m.phone) + '</small><small class="last-activity' + (atRisk ? ' at-risk' : '') + '">' + activityLabel(days) + '</small></div><div class="client-actions"><button class="mini-action correct-client" type="button" data-client-code="' + escapeHtml(m.code) + '" data-client-points="' + Number(m.points || 0) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Corriger</button><button class="danger-action delete-client" type="button" data-client-id="' + escapeHtml(m.id) + '" data-client-name="' + escapeHtml(fullName(m) || m.code) + '">Supprimer</button></div>';
   const rewards = adminRewardHtml(m);
   if (rewards) item.insertAdjacentHTML('beforeend', rewards);
   return item;
@@ -288,6 +300,7 @@ function sortMembers(members, mode) {
   const arr = members.slice();
   if (mode === 'name_asc') arr.sort((a, b) => (fullName(a) || a.code).localeCompare(fullName(b) || b.code, 'fr'));
   else if (mode === 'recent') arr.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+  else if (mode === 'inactive') arr.sort((a, b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at));
   else if (mode === 'points_asc') arr.sort((a, b) => Number(a.points || 0) - Number(b.points || 0));
   else arr.sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
   return arr;
