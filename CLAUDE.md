@@ -6,8 +6,9 @@ Application de fidélité pour "L'Agriculture", brasserie à Blois tenue par Thi
 
 - **Frontend** : HTML/CSS/JS vanilla, pas de framework, pas de build. Fichiers : `index.html`, `styles.css`, `app.js`.
 - **Backend** : Supabase (Postgres + fonctions RPC `security definer`, RLS activée). Config dans `supabase-config.js` (URL + clé anon publique — jamais la service_role key).
-- **Hébergement** : GitHub Pages. Déploiement = remplacer les fichiers modifiés directement sur le dépôt (drag & drop sur github.com, pas de CI/CD).
-- **PWA** : `manifest.json` + `service-worker.js`. Important : `app.js` **désenregistre volontairement le service worker et vide les caches à chaque chargement** (voir fonction `init()`) — c'était un choix délibéré pour éviter les soucis de cache pendant le développement. À garder en tête si on retravaille un jour le offline/cache.
+- **Hébergement** : GitHub Pages, dépôt `Agricultureblois/Fidelite`. Déploiement = `git add/commit/push` depuis le dossier local (git est configuré depuis le 12/08/2026 ; le drag & drop sur github.com n'est plus nécessaire).
+- **PWA** : `manifest.json` + `service-worker.js`. Depuis le 03/11/2026, le service worker est **enregistré** par `init()` en version **minimale sans aucun cache** (simple passe-plat réseau) : c'est la condition de Chrome pour proposer le bouton "Installer" en 1 tap sur Android. Il remplace l'ancien choix de le désenregistrer à chaque chargement (motivé par les versions périmées en cache) — si on y retouche, **ne jamais y ajouter de cache**, sinon le problème d'origine revient.
+- **QR code** : généré **localement** par `qrcode.js` (bibliothèque MIT intégrée au dépôt, chargée avant `app.js`), plus par un service externe. Le QR ne contient que le code client. Ne pas réintroduire de dépendance externe ici : c'est le cœur du mécanisme et ça faisait fuiter des données clients.
 - **Cache-busting** : `index.html` référence `styles.css?v=N` et `app.js?v=N`. **Toujours incrémenter N à chaque modification de ces fichiers**, sinon les téléphones gardent l'ancienne version en cache.
 
 ## Historique des scripts SQL
