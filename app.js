@@ -18,9 +18,29 @@ function setupInstallHelp() {
   if (isIos) {
     help.textContent = "Touchez le bouton pour voir les étapes d'installation sur iPhone ou Android.";
     btn.textContent = "Voir l'aide";
+  } else if (deferredInstallPrompt) {
+    help.textContent = "Touchez Installer : la carte s'ajoute toute seule à votre écran d'accueil.";
+    btn.textContent = 'Installer';
   } else {
     help.textContent = "Touchez le bouton pour voir les étapes d'installation sur iPhone ou Android.";
-    btn.textContent = deferredInstallPrompt ? 'Installer' : "Voir l'aide";
+    btn.textContent = "Voir l'aide";
+  }
+}
+function openInstallHelp() {
+  $('installPanel').hidden = false;
+  setupInstallHelp();
+}
+async function triggerInstall() {
+  if (!deferredInstallPrompt) return openInstallHelp();
+  try {
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    setupInstallHelp();
+    if (!choice || choice.outcome !== 'accepted') openInstallHelp();
+  } catch {
+    deferredInstallPrompt = null;
+    openInstallHelp();
   }
 }
 window.addEventListener('beforeinstallprompt', (event) => {
@@ -28,6 +48,13 @@ window.addEventListener('beforeinstallprompt', (event) => {
   deferredInstallPrompt = event;
   const btn = $('installApp');
   if (btn) { btn.hidden = false; btn.textContent = 'Installer'; }
+  setupInstallHelp();
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  $('installPanel').hidden = true;
+  setupInstallHelp();
+  toast("Carte ajoutée à votre écran d'accueil 🎉");
 });
 let state = { member: null, ranks: [], menu: null, adminPin: '', staffMode: false, adminMembers: [] };
 const STAFF_ENTRY_HASH = '#equipe-lagriculture';
@@ -37,7 +64,18 @@ function normalizePhone(v) { return String(v || '').replace(/[^\d+]/g, '').repla
 function formatPhoneDisplay(v) { const digits = String(v || '').replace(/[^\d]/g, '').slice(0, 10); return digits.replace(/(\d{2})(?=\d)/g, '$1 '); }
 function normalizePin(v) { return String(v || '').replace(/[^\d]/g, ''); }
 function memberCode(phone) { return 'AGRI-' + String(phone || '').replace(/[^\d]/g, ''); }
-function qrUrl(data) { return 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(data); }
+// QR généré directement dans le téléphone (bibliothèque locale qrcode.js) :
+// aucun service externe, donc aucune panne réseau possible et aucune donnée client ne sort.
+function qrUrl(data) {
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(String(data));
+    qr.make();
+    return qr.createDataURL(8, 2);
+  } catch {
+    return '';
+  }
+}
 function fullName(member) { return [member?.first_name, member?.last_name].filter(Boolean).join(' ').trim(); }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function ensureConfig() {
@@ -168,7 +206,10 @@ function renderClient(member) {
   $('nextRewardLabel').textContent = maxed ? rank.name + ' · grade actuel' : next.name + ' · ' + target + ' pts';
   $('nextRewardText').textContent = (maxed ? rank.reward : next.reward) || '';
   $('memberCode').textContent = member.code;
-  $('qrImage').src = qrUrl(JSON.stringify({ code: member.code, firstName: member.first_name || '', lastName: member.last_name || '', phone: member.phone || '' }));
+  // Le QR ne contient que le code : le scanner récupère le nom depuis la base.
+  const qrSrc = qrUrl(member.code);
+  $('qrImage').src = qrSrc;
+  $('qrImage').hidden = !qrSrc;
   renderHistory(member.visits || []);
   renderChallenge(member);
   renderRewards(points);
@@ -559,12 +600,9 @@ function bindUi() {
     $('qr').classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
-  $('installApp').addEventListener('click', () => {
-    $('installPanel').hidden = false;
-    setupInstallHelp();
-  });
+  $('installApp').addEventListener('click', triggerInstall);
   $('tryInstallApp').addEventListener('click', () => {
-    $('installPanel').hidden = false;
+    if (deferredInstallPrompt) return triggerInstall();
     setupInstallHelp();
     toast("Utilisez le menu Chrome puis Ajouter à l'écran d'accueil.");
   });
@@ -643,15 +681,9 @@ async function init() {
   bindUi();
   window.addEventListener('hashchange', maybeOpenStaffEntry);
   if (!ensureConfig()) return;
+  // Service worker sans cache : uniquement pour rendre l'app installable en 1 tap sur Android.
   try {
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map(registration => registration.unregister()));
-    }
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map(key => caches.delete(key)));
-    }
+    if ('serviceWorker' in navigator) await navigator.serviceWorker.register('service-worker.js');
   } catch {}
   try { await loadPublicData(); await refreshMember(); } catch (e) { toast(e.message || 'Erreur de connexion'); }
   maybeOpenStaffEntry();
