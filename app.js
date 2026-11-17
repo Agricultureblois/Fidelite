@@ -149,6 +149,114 @@ function visitsThisMonth(visits) {
   const period = currentPeriod();
   return (visits || []).filter(v => v.created_at && v.created_at.slice(0, 7) === period).length;
 }
+
+// ---------- Calendrier de l'Avent + roue ----------
+const WHEEL_SEGMENTS = [
+  { key: 'p10', label: '+10', color: '#7a1f1f' }, { key: 'coffee', label: '☕', color: '#1f5a3a' },
+  { key: 'p20', label: '+20', color: '#a82a2a' }, { key: 'apero', label: '🍹', color: '#2c7a4f' },
+  { key: 'p30', label: '+30', color: '#7a1f1f' }, { key: 'p15', label: '+15', color: '#1f5a3a' },
+  { key: 'p50', label: '+50', color: '#a82a2a' }, { key: 'p25', label: '+25', color: '#2c7a4f' }
+];
+let adventBusy = false, wheelRot = 0, wheelBuilt = false;
+function wheelPoint(r, deg) { const a = deg * Math.PI / 180; return (100 + r * Math.sin(a)).toFixed(2) + ' ' + (100 - r * Math.cos(a)).toFixed(2); }
+function buildWheel() {
+  if (wheelBuilt) return;
+  const rotor = $('wheelRotor'); if (!rotor) return;
+  const step = 360 / WHEEL_SEGMENTS.length;
+  rotor.innerHTML = WHEEL_SEGMENTS.map((s, i) => {
+    const a0 = i * step, a1 = (i + 1) * step, mid = a0 + step / 2;
+    const tp = wheelPoint(62, mid).split(' ');
+    return '<path d="M100 100 L' + wheelPoint(96, a0) + ' A96 96 0 0 1 ' + wheelPoint(96, a1) + ' Z" fill="' + s.color + '" stroke="#d6aa54" stroke-width="1.5"/><text x="' + tp[0] + '" y="' + tp[1] + '" transform="rotate(' + mid + ' ' + tp[0] + ' ' + tp[1] + ')" text-anchor="middle" dominant-baseline="middle" fill="#fff8ea" font-size="15" font-weight="700">' + s.label + '</text>';
+  }).join('') + '<circle cx="100" cy="100" r="9" fill="#d6aa54"/>';
+  wheelBuilt = true;
+}
+function advShort(p) { return p.type === 'gift' ? (p.key === 'apero' ? '🍹' : '☕') : '+' + p.points; }
+function renderAdvent(st) {
+  const card = $('adventCard'); if (!card) return;
+  if (!st || (!st.active && !st.soon)) { card.hidden = true; return; }
+  card.hidden = false;
+  if (st.soon) {
+    $('adventText').textContent = "Bientôt : le calendrier de l'Avent et sa roue de Noël arrivent le " + new Date(st.start_date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }).replace(/^1 /, '1er ') + ' ! Une case par jour de présence, des points et des cadeaux à gagner.';
+    ['adventGrid', 'adventGifts'].forEach(id => $(id).innerHTML = ''); $('adventOpen').hidden = true; $('wheelBlock').hidden = true;
+    return;
+  }
+  const plays = st.plays || [];
+  const cases = {}; plays.filter(p => p.kind === 'case').forEach(p => { cases[p.case_day] = p; });
+  const today = st.case_day;
+  let grid = '';
+  const closedDow = st.closed_dow || [0, 6];
+  const isClosedDay = (d) => { const dt = new Date(st.start_date + 'T12:00:00'); dt.setDate(dt.getDate() + d - 1); return closedDow.includes(dt.getDay()); };
+  for (let d = 1; d <= 24; d++) {
+    const p = cases[d]; let cls = 'advent-cell', inner = String(d);
+    if (!p && isClosedDay(d)) { cls += ' closed' + (today && d === today ? ' today' : ''); inner = d + '<small>fermé</small>'; }
+    else if (p) { cls += ' opened' + (p.type === 'gift' ? ' gift' : ''); inner = '<small>' + d + '</small>' + advShort(p); }
+    else if (today && d === today) { cls += st.can_open ? ' today ready' : ' today'; inner = st.can_open ? '🎁' : d + '<small>🔒</small>'; }
+    else if (!today || d < today) cls += ' missed';
+    grid += '<div class="' + cls + '">' + inner + '</div>';
+  }
+  $('adventGrid').innerHTML = grid;
+  const btn = $('adventOpen');
+  btn.hidden = !st.can_open;
+  if (st.can_open) $('adventText').textContent = 'Ta case du jour est prête, ouvre-la !';
+  else if (today && cases[today]) $('adventText').textContent = "Case du jour ouverte ✅ Reviens demain (et passe nous voir) pour la suivante !";
+  else if (st.closed_today) $('adventText').textContent = "Le restaurant est fermé aujourd'hui : pas de case le week-end. Rendez-vous à la réouverture !";
+  else if (today) $('adventText').textContent = "Passe nous voir aujourd'hui : ta case s'ouvre dès que ton passage est enregistré en caisse.";
+  else $('adventText').textContent = 'Les cases sont terminées, mais la roue tourne jusqu\'au 31 décembre !';
+  buildWheel();
+  $('wheelBlock').hidden = false;
+  const spins = Number(st.spins_available || 0);
+  $('wheelSpin').hidden = spins <= 0;
+  $('wheelSpin').textContent = 'Tourner la roue' + (spins > 1 ? ' (' + spins + ' tours)' : '');
+  $('wheelText').textContent = spins > 0 ? 'Tu as ' + spins + (spins > 1 ? ' tours' : ' tour') + ' à jouer !' : 'Un tour gagné tous les 3 jours de présence en décembre. Encore ' + st.next_spin_in + (st.next_spin_in > 1 ? ' jours' : ' jour') + ' avant le prochain.';
+  const gifts = plays.filter(p => p.type === 'gift');
+  $('adventGifts').innerHTML = gifts.length ? '<p class="eyebrow">Tes cadeaux de l\'Avent</p>' + gifts.map(g => '<p class="advent-gift' + (g.used ? ' used' : '') + '">' + escapeHtml(g.label) + (g.used ? ' — ✅ utilisé' : ' — à montrer à l\'équipe') + '</p>').join('') : '';
+}
+async function loadAdvent(code) {
+  try {
+    const { data, error } = await db.rpc('advent_state', { p_code: code });
+    if (!error) renderAdvent(data);
+  } catch (e) { /* l'Avent ne doit jamais bloquer la carte */ }
+}
+async function openAdventCase() {
+  if (adventBusy || !state.member) return; adventBusy = true;
+  const { data, error } = await db.rpc('advent_open_case', { p_code: state.member.code });
+  adventBusy = false;
+  if (error) { toast(error.message); return loadAdvent(state.member.code); }
+  toast(data.prize.type === 'gift' ? '🎉 ' + data.prize.label + ' !' : '🎁 ' + data.prize.label);
+  renderAdvent(data.state);
+  if (data.member) renderClient(data.member);
+}
+async function spinWheel() {
+  if (adventBusy || !state.member) return; adventBusy = true;
+  $('wheelSpin').disabled = true;
+  const { data, error } = await db.rpc('advent_spin', { p_code: state.member.code });
+  if (error) { adventBusy = false; $('wheelSpin').disabled = false; toast(error.message); return loadAdvent(state.member.code); }
+  const idx = Math.max(0, WHEEL_SEGMENTS.findIndex(s => s.key === data.prize.key));
+  const step = 360 / WHEEL_SEGMENTS.length;
+  wheelRot = (Math.floor(wheelRot / 360) + 6) * 360 - (idx * step + step / 2);
+  $('wheelRotor').style.transform = 'rotate(' + wheelRot + 'deg)';
+  setTimeout(() => {
+    adventBusy = false; $('wheelSpin').disabled = false;
+    toast(data.prize.type === 'gift' ? '🎉 ' + data.prize.label + ' !' : '🎡 ' + data.prize.label);
+    renderAdvent(data.state);
+    if (data.member) renderClient(data.member);
+  }, 4300);
+}
+async function renderAdventAdmin() {
+  const box = $('adventAdminText'); if (!box) return;
+  try {
+    const { data, error } = await db.rpc('admin_advent_overview', { p_pin: state.adminPin });
+    if (error) throw error;
+    box.textContent = 'Budget cadeaux : ' + money.format(Number(data.spent || 0)) + ' dépensés sur ' + money.format(Number(data.budget || 0)) + ' · ' + (data.plays || 0) + ' parties · ' + (data.points_given || 0) + ' points offerts · ' + (data.gifts_used || 0) + ' cadeaux remis';
+    const pend = data.gifts_pending || [];
+    $('adventAdminGifts').innerHTML = pend.length ? '<p class="chart-label">Cadeaux à remettre</p>' + pend.map(g => '<div class="advent-admin-gift"><span><strong>' + escapeHtml(g.member_name || g.member_code) + '</strong> — ' + escapeHtml(g.label) + '</span><button class="mini-action" type="button" data-advent-use="' + escapeHtml(g.id) + '">Remis</button></div>').join('') : '<p class="hint">Aucun cadeau en attente.</p>';
+    document.querySelectorAll('[data-advent-use]').forEach(b => b.addEventListener('click', async () => {
+      const r = await db.rpc('admin_use_advent_gift', { p_pin: state.adminPin, p_play_id: b.dataset.adventUse });
+      if (r.error) return toast(r.error.message);
+      toast('Cadeau marqué remis'); renderAdventAdmin();
+    }));
+  } catch (e) { box.textContent = 'Avent indisponible.'; }
+}
 function renderChallenge(member) {
   const card = $('challengeCard');
   if (!card) return;
@@ -212,6 +320,7 @@ function renderClient(member) {
   $('qrImage').hidden = !qrSrc;
   renderHistory(member.visits || []);
   renderChallenge(member);
+  loadAdvent(member.code);
   renderRewards(points);
   $('signinPanel').hidden = true;
   $('clientApp').hidden = false;
@@ -335,6 +444,7 @@ async function loadAdmin() {
   const topReward = (data?.rewards_by_rank || [])[0];
   $('statTopReward').textContent = topReward ? topReward.label + ' (' + topReward.count + ')' : '—';
   renderKpis(data);
+  renderAdventAdmin();
   renderClientList();
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
   admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
@@ -643,6 +753,8 @@ function bindUi() {
   $('refreshClient').addEventListener('click', refreshMember);
   const challengeClaim = $('challengeClaim');
   if (challengeClaim) challengeClaim.addEventListener('click', claimChallenge);
+  if ($('adventOpen')) $('adventOpen').addEventListener('click', openAdventCase);
+  if ($('wheelSpin')) $('wheelSpin').addEventListener('click', spinWheel);
   const gradeUpClose = $('gradeUpClose');
   if (gradeUpClose) gradeUpClose.addEventListener('click', () => $('gradeUpBanner').hidden = true);
   const menuUpdateClose = $('menuUpdateClose');

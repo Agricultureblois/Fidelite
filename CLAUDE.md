@@ -1,6 +1,6 @@
 # L'Agriculture Fidélité — contexte projet
 
-Application de fidélité pour "L'Agriculture", brasserie à Blois tenue par Thibault (associé-gérant). PWA connectée, **en production** sur https://fidelite.lagriculture-blois.fr, développée par itérations successives. État actuel : **v28** (cache-busting `?v=28`).
+Application de fidélité pour "L'Agriculture", brasserie à Blois tenue par Thibault (associé-gérant). PWA connectée, **en production** sur https://fidelite.lagriculture-blois.fr, développée par itérations successives. État actuel : **v30** (cache-busting `?v=30`).
 
 ## Stack technique
 
@@ -62,6 +62,9 @@ Application de fidélité pour "L'Agriculture", brasserie à Blois tenue par Thi
 
 ## v28 — Pilotage (17/11/2026)
 Carte « Pilotage » dans l'onglet Clients : taux de capture (CA appli / CA caisse saisi par mois), rétention mois sur mois, panier médian, passages en jours distincts, valeur € des cadeaux offerts. Migration `supabase-v28-kpi-stats.sql` (déjà appliquée sur Supabase ; retour arrière : `supabase-rollback-admin-dashboard-v27.sql`). Valeurs des cadeaux initiales = prix de la carte, à confirmer ; Apprenti et Plongeur non renseignés. `admin_dashboard` renvoie les mêmes clés qu'avant + les nouvelles.
+
+## v29 — Calendrier de l'Avent + roue de Noël (décembre 2026)
+Migrations `supabase-v29-avent.sql` (déjà appliquée ; retour arrière `supabase-rollback-avent-v29.sql`). Tables `advent_config` (dates 1–24/12 cases, 31/12 fin de roue, budget 20 €, `enabled` = interrupteur), `advent_plays`. RPC : `advent_state`, `advent_open_case`, `advent_spin` (client, par code), `admin_advent_overview`, `admin_use_advent_gift` (équipe), `advent_draw` (interne). Règles : case du jour ouverte seulement si un crédit a été fait ce jour-là (heure de Paris), pas de rattrapage ; 1 tour de roue tous les 3 jours de présence ; gains = points (cases +5/10/15/25, roue +10 à +50) ou cadeaux réels (boisson chaude, apéro, valeurs de `reward_values`) tirés côté serveur, plafonnés par le budget et étalés sur la période. Désactiver : `update advent_config set enabled=false;`. Équipe : carte « Calendrier de l'Avent » dans l'onglet Clients (budget dépensé, cadeaux à remettre → bouton « Remis »). Restaurant fermé samedi et dimanche : pas de case ces jours-là (`advent_config.closed_dow`, défaut {0,6}), cases perdues, affichées « fermé ». Pas de message « Bientôt » avant le 1er décembre. **Mode test** : `advent_config.only_codes` (tableau de codes clients) réserve l'Avent à ces comptes ; pour tester avant décembre : `update advent_config set start_date=current_date, cases_until=current_date+23, end_date=current_date+30, only_codes=array['AGRI-...'] where id=1;` puis REMETTRE `start_date='2026-12-01', cases_until='2026-12-24', end_date='2026-12-31', only_codes=null` et supprimer les parties de test (`delete from advent_plays;`) et re-créditer/retirer les points de test. Testé en base avec rollback ; non testé en conditions réelles avant le 1er décembre.
 
 ## Historique (d'après git)
 

@@ -16,3 +16,23 @@
 .kpi-month label,.gift-value{display:flex;align-items:center;gap:8px;font-size:13px}
 .kpi-month input,.gift-value input{width:96px}
 .gift-value{grid-column:1/-1}
+
+.advent-card{padding:16px;border:1px solid rgba(214,170,84,.45);border-radius:14px;background:linear-gradient(160deg,rgba(122,31,31,.35),rgba(31,90,58,.25));display:grid;gap:10px}
+.advent-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.advent-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid rgba(214,170,84,.35);border-radius:8px;font-size:14px;font-weight:700;color:var(--cream);background:rgba(9,8,7,.45);line-height:1.1}
+.advent-cell small{font-size:9px;font-weight:400;opacity:.8}
+.advent-cell.opened{background:rgba(214,170,84,.22);color:var(--gold-soft)}
+.advent-cell.gift{background:var(--gold);color:var(--black)}
+.advent-cell.today{border-color:var(--gold);box-shadow:0 0 0 2px rgba(214,170,84,.4)}
+.advent-cell.ready{animation:advent-pulse 1.2s infinite;font-size:20px}
+.advent-cell.missed{opacity:.35}
+@keyframes advent-pulse{50%{transform:scale(1.08)}}
+.wheel-block{display:grid;gap:8px;justify-items:center;text-align:center}
+.wheel-wrap{position:relative;width:min(240px,70vw)}
+.wheel-svg{width:100%;height:auto;display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+#wheelRotor{transform-origin:100px 100px;transition:transform 4.2s cubic-bezier(.12,.7,.15,1)}
+.wheel-pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:18px solid var(--gold);z-index:2;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}
+.advent-gift{margin:2px 0;padding:8px 10px;border-radius:8px;background:rgba(214,170,84,.18);color:var(--gold-soft);font-size:14px}
+.advent-gift.used{opacity:.55}
+.advent-admin-gift{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(214,170,84,.2);font-size:14px}
+.advent-cell.closed{opacity:.4;background:rgba(9,8,7,.7);border-style:dashed}
