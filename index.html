@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="L'Agriculture">
   <link rel="apple-touch-icon" href="logo-agriculture.jpg">
-  <link rel="stylesheet" href="styles.css?v=27">
+  <link rel="stylesheet" href="styles.css?v=28">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="qrcode.js?v=27"></script>
+  <script src="qrcode.js?v=28"></script>
 </head>
 <body>
   <main class="phone-shell">
@@ -79,6 +79,7 @@
         <div class="admin-tab-panel" data-admin-panel="settings">
           <article class="admin-card"><h3>Menu du jour</h3><form id="menuForm" class="stack-form"><input id="adminStarter" placeholder="Entrée"><input id="adminMain" placeholder="Plat"><input id="adminDessert" placeholder="Dessert"><input id="adminPrice" placeholder="Prix"><button type="submit">Mettre à jour</button></form></article>
           <article class="admin-card"><h3>Autres administrateurs</h3><form id="adminUserForm" class="stack-form"><input id="newAdminName" placeholder="Nom admin"><input id="newAdminPin" inputmode="numeric" placeholder="Nouveau PIN"><button type="submit">Ajouter admin</button></form><div class="client-list" id="adminUsersList"></div></article>
+          <article class="admin-card" id="kpiCard"><h3>Pilotage</h3><p class="hint">Saisis le CA de caisse du mois pour voir quelle part des ventes passe par l'appli.</p><div class="stats"><span><strong id="kpiCapture">—</strong> clients identifiés (ce mois)</span><span><strong id="kpiRetention">—</strong> reviennent du mois dernier</span><span><strong id="kpiMedian">0 €</strong> panier médian</span></div><div class="stats"><span><strong id="kpiVisitDays">0</strong> passages (jours distincts)</span><span><strong id="kpiGiftMonth">0 €</strong> cadeaux offerts ce mois</span><span><strong id="kpiGiftTotal">0 €</strong> cadeaux offerts au total</span></div><p class="hint" id="kpiGiftWarn" hidden></p><div class="kpi-months" id="kpiMonths"></div></article>
           <article class="admin-card"><h3>Grades et cadeaux</h3><div class="grade-editor" id="gradeEditor"></div><button class="mini-action" id="saveRanks" type="button">Enregistrer les grades</button></article>
         </div>
       </section>
@@ -86,6 +87,6 @@
     </section>
   </main>
   <div class="toast" id="toast" hidden></div>
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>

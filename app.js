@@ -56,7 +56,7 @@ window.addEventListener('appinstalled', () => {
   setupInstallHelp();
   toast("Carte ajoutée à votre écran d'accueil 🎉");
 });
-let state = { member: null, ranks: [], menu: null, adminPin: '', staffMode: false, adminMembers: [] };
+let state = { member: null, ranks: [], menu: null, adminPin: '', staffMode: false, adminMembers: [], rewardValues: {} };
 const STAFF_ENTRY_HASH = '#equipe-lagriculture';
 
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; setTimeout(() => $('toast').hidden = true, 2200); }
@@ -334,10 +334,40 @@ async function loadAdmin() {
   $('statRewardsTotal').textContent = data?.rewards_redeemed_total || 0;
   const topReward = (data?.rewards_by_rank || [])[0];
   $('statTopReward').textContent = topReward ? topReward.label + ' (' + topReward.count + ')' : '—';
+  renderKpis(data);
   renderClientList();
   const adminList = $('adminUsersList'); adminList.innerHTML = '';
   admins.forEach(a => { const item = document.createElement('article'); item.className = 'client-item'; item.innerHTML = '<strong>' + escapeHtml(a.name) + '</strong><small>Admin actif</small>'; adminList.appendChild(item); });
   renderRankEditor();
+}
+function renderKpis(data) {
+  const months = data?.monthly || [];
+  const cur = months[months.length - 1] || {};
+  state.rewardValues = {};
+  (data?.reward_values || []).forEach(v => { state.rewardValues[v.rank_name] = v.value; });
+  const pct = (a, b) => b > 0 ? Math.round((a / b) * 100) + ' %' : '—';
+  const till = cur.till_revenue;
+  $('kpiCapture').textContent = till ? pct(Number(cur.revenue || 0), Number(till)) : '—';
+  $('kpiRetention').textContent = pct(Number(cur.returning || 0), Number(cur.prev_active || 0));
+  $('kpiMedian').textContent = money.format(Number(data?.median_basket || 0));
+  $('kpiVisitDays').textContent = data?.visit_days_total || 0;
+  $('kpiGiftMonth').textContent = money.format(Number(data?.rewards_value_month || 0));
+  $('kpiGiftTotal').textContent = money.format(Number(data?.rewards_value_total || 0));
+  const warn = $('kpiGiftWarn'), missing = data?.rewards_missing_ranks || [];
+  warn.hidden = !missing.length;
+  warn.textContent = missing.length ? 'Valeur non renseignée pour : ' + missing.join(', ') + ' (' + (data.rewards_without_value || 0) + ' cadeaux non comptés). Renseigne-la dans Réglages > Grades et cadeaux.' : '';
+  const names = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  $('kpiMonths').innerHTML = months.slice().reverse().map(m => {
+    const [y, mo] = m.period.split('-');
+    const rate = m.till_revenue ? pct(Number(m.revenue || 0), Number(m.till_revenue)) : '—';
+    return '<div class="kpi-month"><strong>' + names[Number(mo) - 1] + ' ' + y + '</strong><small>' + money.format(Number(m.revenue || 0)) + ' via l\'appli · ' + (m.active_members || 0) + ' clients · panier médian ' + money.format(Number(m.median_basket || 0)) + ' · capture ' + rate + '</small><label>CA caisse <input type="number" min="0" step="1" inputmode="decimal" data-till="' + m.period + '" value="' + (m.till_revenue ?? '') + '" placeholder="€"></label></div>';
+  }).join('');
+  document.querySelectorAll('[data-till]').forEach(inp => inp.addEventListener('change', async () => {
+    const v = inp.value.trim();
+    const { error } = await db.rpc('admin_set_monthly_revenue', { p_pin: state.adminPin, p_period: inp.dataset.till, p_amount: v === '' ? null : Number(v) });
+    if (error) return toast(error.message);
+    toast('CA caisse enregistré'); await loadAdmin();
+  }));
 }
 function renderBarChart(id, items, labelEvery) {
   const el = $(id);
@@ -444,7 +474,7 @@ function adminRewardHtml(member) {
 }
 function renderRankEditor() {
   const wrap = $('gradeEditor'); wrap.innerHTML = '';
-  state.ranks.forEach((r, i) => { const row = document.createElement('article'); row.className = 'grade-row'; row.innerHTML = '<input data-rank-name="' + i + '" value="' + r.name.replace(/"/g,'&quot;') + '"><input data-rank-points="' + i + '" type="number" value="' + r.points_required + '"><textarea data-rank-reward="' + i + '" rows="2">' + r.reward + '</textarea>'; wrap.appendChild(row); });
+  state.ranks.forEach((r, i) => { const row = document.createElement('article'); row.className = 'grade-row'; row.innerHTML = '<input data-rank-name="' + i + '" value="' + r.name.replace(/"/g,'&quot;') + '"><input data-rank-points="' + i + '" type="number" value="' + r.points_required + '"><textarea data-rank-reward="' + i + '" rows="2">' + r.reward + '</textarea><label class="gift-value">Valeur du cadeau (€) <input data-rank-value="' + i + '" type="number" min="0" step="0.5" inputmode="decimal" value="' + (state.rewardValues[r.name] ?? '') + '"></label>'; wrap.appendChild(row); });
 }
 function renderClientPreview(member) {
   const box = $('clientPreview');
@@ -570,6 +600,9 @@ async function saveRanks() {
   const rows = Array.from(document.querySelectorAll('[data-rank-name]')).map((input, idx) => { const i = input.dataset.rankName; return { name: input.value, points_required: Number(document.querySelector('[data-rank-points="' + i + '"]').value || 0), reward: document.querySelector('[data-rank-reward="' + i + '"]').value, sort_order: idx + 1 }; });
   const { error } = await db.rpc('admin_save_ranks', { p_pin: state.adminPin, p_ranks: rows });
   if (error) return toast(error.message);
+  const values = Array.from(document.querySelectorAll('[data-rank-value]')).map(input => ({ rank_name: document.querySelector('[data-rank-name="' + input.dataset.rankValue + '"]').value, value: input.value.trim() === '' ? null : Number(input.value) }));
+  const vr = await db.rpc('admin_set_reward_values', { p_pin: state.adminPin, p_values: values });
+  if (vr.error) toast(vr.error.message);
   await loadPublicData(); await loadAdmin(); toast('Grades enregistrés');
 }
 let scanStream = null, scanTimer = null;
