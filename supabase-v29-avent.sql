@@ -10,6 +10,11 @@
 --    réparti sur la période (pas tout le premier jour) et tiré côté serveur.
 --  * Le reste des gains = points bonus.
 -- Retour arrière : supabase-rollback-avent-v29.sql
+--
+-- RECONSTRUIRE LA BASE : jouer ce fichier, PUIS supabase-v30-avent-soon.sql
+-- (qui remplace advent_state par sa version finale : message d'attente avant
+-- l'ouverture du calendrier). Les autres fonctions ci-dessous sont identiques
+-- à celles en production (vérifié le 17/11/2026).
 
 create table if not exists public.advent_config (
   id int primary key default 1 check (id = 1),
@@ -17,8 +22,16 @@ create table if not exists public.advent_config (
   start_date date not null,
   cases_until date not null,
   end_date date not null,
-  budget numeric(8,2) not null check (budget >= 0)
+  budget numeric(8,2) not null check (budget >= 0),
+  -- only_codes : si renseigné, seuls ces codes clients voient l'Avent (mode test). null = tout le monde.
+  only_codes text[],
+  -- closed_dow : jours de fermeture du restaurant (0 = dimanche, 6 = samedi) : pas de case ces jours-là.
+  closed_dow int[] not null default '{0,6}'
 );
+-- Ces deux colonnes ont été ajoutées après la première mise en production :
+-- ces ALTER rattrapent une base déjà créée sans elles (sans effet sinon).
+alter table public.advent_config add column if not exists only_codes text[];
+alter table public.advent_config add column if not exists closed_dow int[] not null default '{0,6}';
 alter table public.advent_config enable row level security;
 insert into public.advent_config (id, enabled, start_date, cases_until, end_date, budget)
 values (1, true, date '2026-12-01', date '2026-12-24', date '2026-12-31', 20)
@@ -100,6 +113,7 @@ $function$;
 revoke all on function public.advent_draw(text, date) from public, anon, authenticated;
 
 -- État du calendrier et de la roue pour un client
+-- ATTENTION : version v29, remplacée ensuite par supabase-v30-avent-soon.sql.
 create or replace function public.advent_state(p_code text)
  returns jsonb
  language plpgsql
@@ -319,9 +333,5 @@ grant execute on function public.advent_spin(text) to anon, authenticated;
 grant execute on function public.admin_advent_overview(text) to anon, authenticated;
 grant execute on function public.admin_use_advent_gift(text, uuid) to anon, authenticated;
 
--- v30 (appliquée ensuite) : colonnes de configuration ajoutées et fonctions ci-dessus mises à jour
--- (les définitions ci-dessus sont déjà la version finale) :
---   only_codes : si renseigné, seuls ces codes clients voient l'Avent (mode test). null = tout le monde.
---   closed_dow : jours de fermeture (0 = dimanche, 6 = samedi) : pas de case ces jours-là.
-alter table public.advent_config add column if not exists only_codes text[];
-alter table public.advent_config add column if not exists closed_dow int[] not null default '{0,6}';
+-- Suite de l'historique : supabase-v30-avent-soon.sql remplace advent_state
+-- (annonce de la date avant l'ouverture). À jouer après ce fichier.
