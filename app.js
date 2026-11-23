@@ -707,10 +707,10 @@ async function addAdmin(e) {
   $('newAdminName').value = ''; $('newAdminPin').value = ''; toast('Admin ajouté'); await loadAdmin();
 }
 async function saveRanks() {
-  const rows = Array.from(document.querySelectorAll('[data-rank-name]')).map((input, idx) => { const i = input.dataset.rankName; return { name: input.value, points_required: Number(document.querySelector('[data-rank-points="' + i + '"]').value || 0), reward: document.querySelector('[data-rank-reward="' + i + '"]').value, sort_order: idx + 1 }; });
+  const rows = Array.from(document.querySelectorAll('#gradeEditor input[data-rank-name]')).map((input, idx) => { const i = input.dataset.rankName; return { name: input.value, points_required: Number(document.querySelector('#gradeEditor [data-rank-points="' + i + '"]').value || 0), reward: document.querySelector('#gradeEditor [data-rank-reward="' + i + '"]').value, sort_order: idx + 1 }; });
   const { error } = await db.rpc('admin_save_ranks', { p_pin: state.adminPin, p_ranks: rows });
   if (error) return toast(error.message);
-  const values = Array.from(document.querySelectorAll('[data-rank-value]')).map(input => ({ rank_name: document.querySelector('[data-rank-name="' + input.dataset.rankValue + '"]').value, value: input.value.trim() === '' ? null : Number(input.value) }));
+  const values = Array.from(document.querySelectorAll('#gradeEditor [data-rank-value]')).map(input => ({ rank_name: document.querySelector('#gradeEditor input[data-rank-name="' + input.dataset.rankValue + '"]').value, value: input.value.trim() === '' ? null : Number(input.value) }));
   const vr = await db.rpc('admin_set_reward_values', { p_pin: state.adminPin, p_values: values });
   if (vr.error) toast(vr.error.message);
   await loadPublicData(); await loadAdmin(); toast('Grades enregistrés');
