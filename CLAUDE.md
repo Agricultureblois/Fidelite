@@ -90,3 +90,6 @@ Bug (présent depuis longtemps) : `saveRanks` sélectionnait `[data-rank-name]`,
 - Français, informel, direct. Phrases courtes. Préfère 1 à 2 questions ciblées plutôt qu'une supposition, des résultats directement utilisables, et valide par petits messages : intégrer les corrections tout de suite sans réexpliquer.
 - Pas développeur : privilégier les changements qui ne touchent que le frontend (`index.html`/`equipe.html`/`app.js`/`styles.css`) sans migration SQL quand c'est possible. Si une migration est nécessaire, l'appliquer et la versionner dans le dépôt, sans lui demander de manipuler l'éditeur SQL.
 - Toujours terminer par un résumé clair en français de ce qui a changé et pourquoi.
+
+## Publication automatique du menu (25/11/2026)
+Dossier `menu-auto/` (voir son README) : chaque matin en semaine, une tâche programmée de Claude génère les images du menu du jour depuis le menu partagé de l'Ardoise de l'Agri, les pousse dans `menu-auto/images/` et programme le post + la story Facebook/Instagram à 6h dans Metricool. Ce dossier ne touche pas à l'appli : pas de cache-busting à incrémenter quand il change.
